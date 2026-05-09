@@ -1,98 +1,222 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+// app/(tabs)/index.tsx
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { getActiveSongs } from "@/src/services/songService";
+import type { Song } from "@/src/types/song";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Pressable,
+  Text,
+  View,
+} from "react-native";
 
-export default function HomeScreen() {
+export default function SongListScreen() {
+  const router = useRouter();
+
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadSongs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const activeSongs = await getActiveSongs();
+      setSongs(activeSongs);
+    } catch (error) {
+      console.log("Load songs error:", error);
+      Alert.alert("Hata", "Parçalar yüklenirken bir sorun oluştu.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSongs();
+    }, [loadSongs])
+  );
+
+  const handleStartSong = (songId: string) => {
+    router.push({
+      pathname: "/record/[songId]",
+      params: { songId },
+    });
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "#F8F7FF",
+        paddingHorizontal: 20,
+        paddingTop: 64,
+      }}
+    >
+      <View style={{ marginBottom: 22 }}>
+        <View
+          style={{
+            width: 58,
+            height: 58,
+            borderRadius: 20,
+            backgroundColor: "#EEF2FF",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 16,
+          }}
+        >
+          <Ionicons name="musical-notes" size={30} color="#4F46E5" />
+        </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <Text
+          style={{
+            fontSize: 30,
+            fontWeight: "900",
+            color: "#111827",
+            marginBottom: 6,
+          }}
+        >
+          PianoSense
+        </Text>
+
+        <Text
+          style={{
+            fontSize: 15,
+            color: "#6B7280",
+            lineHeight: 22,
+          }}
+        >
+          Bir melodi seç. Önce orijinalini dinle, sonra aynı melodiyi çal ve
+          kaydet.
+        </Text>
+      </View>
+
+      {loading ? (
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={{ marginTop: 12, color: "#6B7280" }}>
+            Parçalar yükleniyor...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{
+            paddingBottom: 32,
+            gap: 12,
+          }}
+          ListEmptyComponent={
+            <View
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 24,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: "#E5E7EB",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "900",
+                  color: "#111827",
+                  marginBottom: 8,
+                }}
+              >
+                Henüz parça yok
+              </Text>
+
+              <Text
+                style={{
+                  color: "#6B7280",
+                  lineHeight: 22,
+                }}
+              >
+                Firestore songs koleksiyonunda aktif parça bulunamadı.
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View
+              style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 24,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: "#E5E7EB",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 16,
+                  backgroundColor: "#EEF2FF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="musical-note" size={24} color="#4F46E5" />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: "#111827",
+                    fontSize: 16,
+                    fontWeight: "900",
+                  }}
+                >
+                  {item.title}
+                </Text>
+
+                <Text
+                  style={{
+                    color: "#9CA3AF",
+                    fontSize: 12,
+                    marginTop: 4,
+                  }}
+                  numberOfLines={1}
+                >
+                  Önce dinle, sonra kaydet
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => handleStartSong(item.id)}
+                style={{
+                  backgroundColor: "#4F46E5",
+                  borderRadius: 16,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontWeight: "900",
+                    fontSize: 14,
+                  }}
+                >
+                  Başla
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
