@@ -1,5 +1,6 @@
 // app/processing/[jobId].tsx
 
+import { AuthGate } from "@/src/components/auth/AuthGate";
 import {
     completeAnalysisJobWithMockResult,
     listenAnalysisJob,
@@ -11,6 +12,14 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 
 export default function ProcessingScreen() {
+  return (
+    <AuthGate>
+      <ProcessingScreenContent />
+    </AuthGate>
+  );
+}
+
+function ProcessingScreenContent() {
   const router = useRouter();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
 

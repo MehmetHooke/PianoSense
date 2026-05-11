@@ -1,5 +1,6 @@
 // app/result/[jobId].tsx
 
+import { AuthGate } from "@/src/components/auth/AuthGate";
 import { getAnalysisJobById } from "@/src/services/analysisJobService";
 import type { AnalysisJob, AnalysisResultItem } from "@/src/types/analysisJob";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,6 +52,14 @@ function getStatusColor(status: AnalysisResultItem["status"]) {
 }
 
 export default function ResultScreen() {
+  return (
+    <AuthGate>
+      <ResultScreenContent />
+    </AuthGate>
+  );
+}
+
+function ResultScreenContent() {
   const router = useRouter();
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
 

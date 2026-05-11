@@ -1,8 +1,8 @@
 import { auth } from "@/src/services/firebase";
 import { useAppTheme } from "@/src/theme/useTheme";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { router } from "expo-router";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { useState } from "react";
 import {
     ActivityIndicator,
@@ -15,29 +15,33 @@ import {
     View,
 } from "react-native";
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const { colors } = useAppTheme();
 
-  const [email, setEmail] = useState("test@gmail.com");
-  const [password, setPassword] = useState("test123");
-  const [secure, setSecure] = useState(true);
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setErrorMessage("Lütfen e-posta ve şifre alanlarını doldurun.");
+  const handleResetPassword = async () => {
+    if (!email.trim()) {
+      setErrorMessage("Lütfen e-posta adresini yaz.");
       return;
     }
 
     try {
       setLoading(true);
       setErrorMessage("");
+      setSuccessMessage("");
 
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await sendPasswordResetEmail(auth, email.trim());
+
+      setSuccessMessage(
+        "Şifre sıfırlama bağlantısı e-posta adresine gönderildi."
+      );
     } catch (error) {
-      console.error("LOGIN ERROR:", error);
-      setErrorMessage("Giriş yapılamadı. E-posta veya şifreyi kontrol edin.");
+      console.error("PASSWORD RESET ERROR:", error);
+      setErrorMessage("Sıfırlama bağlantısı gönderilemedi. E-postayı kontrol et.");
     } finally {
       setLoading(false);
     }
@@ -57,7 +61,23 @@ export default function LoginScreen() {
           justifyContent: "center",
         }}
       >
-        <View style={{ gap: 28 }}>
+        <View style={{ gap: 24 }}>
+          <Pressable
+            onPress={() => router.back()}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 16,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.softBorder,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </Pressable>
+
           <View style={{ gap: 14, alignItems: "center" }}>
             <View
               style={{
@@ -71,10 +91,10 @@ export default function LoginScreen() {
                 borderColor: colors.softBorder,
               }}
             >
-              <Ionicons name="musical-notes" size={34} color={colors.primary} />
+              <Ionicons name="key-outline" size={34} color={colors.primary} />
             </View>
 
-            <View style={{ gap: 8, alignItems: "center" }}>
+            <View style={{ gap: 8 }}>
               <Text
                 style={{
                   color: colors.text,
@@ -83,7 +103,7 @@ export default function LoginScreen() {
                   textAlign: "center",
                 }}
               >
-                PianoSense’e hoş geldin
+                Şifreni mi unuttun?
               </Text>
 
               <Text
@@ -94,8 +114,7 @@ export default function LoginScreen() {
                   textAlign: "center",
                 }}
               >
-                Performansını kaydet, orijinal melodiyle karşılaştır ve hangi
-                notalarda gelişmen gerektiğini gör.
+                E-posta adresini yaz. Sana şifre sıfırlama bağlantısı gönderelim.
               </Text>
             </View>
           </View>
@@ -135,10 +154,11 @@ export default function LoginScreen() {
                 }}
               >
                 <Ionicons name="mail-outline" size={20} color={colors.mutedText} />
+
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="test@gmail.com"
+                  placeholder="email@example.com"
                   placeholderTextColor={colors.subtleText}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -152,84 +172,26 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            <View style={{ gap: 8 }}>
-              <Text
-                style={{
-                  color: colors.text,
-                  fontSize: 14,
-                  fontWeight: "800",
-                }}
-              >
-                Şifre
-              </Text>
-
-              <View
-                style={{
-                  height: 54,
-                  borderRadius: 16,
-                  backgroundColor: colors.background,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  paddingHorizontal: 14,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <Ionicons name="lock-closed-outline" size={20} color={colors.mutedText} />
-
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="test123"
-                  placeholderTextColor={colors.subtleText}
-                  secureTextEntry={secure}
-                  style={{
-                    flex: 1,
-                    color: colors.text,
-                    fontSize: 15,
-                    fontWeight: "600",
-                  }}
-                />
-
-                <Pressable onPress={() => setSecure((prev) => !prev)}>
-                  <Ionicons
-                    name={secure ? "eye-outline" : "eye-off-outline"}
-                    size={20}
-                    color={colors.mutedText}
-                  />
-                </Pressable>
-              </View>
-            </View>
-
             {errorMessage ? (
-              <View
-                style={{
-                  backgroundColor: colors.dangerSoft,
-                  borderRadius: 14,
-                  padding: 12,
-                  flexDirection: "row",
-                  gap: 8,
-                  alignItems: "flex-start",
-                }}
-              >
-                <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
-                <Text
-                  style={{
-                    flex: 1,
-                    color: colors.danger,
-                    fontSize: 13,
-                    fontWeight: "700",
-                    lineHeight: 18,
-                  }}
-                >
-                  {errorMessage}
-                </Text>
-              </View>
+              <InfoBox
+                text={errorMessage}
+                icon="alert-circle-outline"
+                backgroundColor={colors.dangerSoft}
+                color={colors.danger}
+              />
+            ) : null}
+
+            {successMessage ? (
+              <InfoBox
+                text={successMessage}
+                icon="checkmark-circle-outline"
+                backgroundColor={colors.successSoft}
+                color={colors.success}
+              />
             ) : null}
 
             <Pressable
-              onPress={handleLogin}
+              onPress={handleResetPassword}
               disabled={loading}
               style={({ pressed }) => ({
                 height: 56,
@@ -251,12 +213,12 @@ export default function LoginScreen() {
                     fontWeight: "900",
                   }}
                 >
-                  Giriş yap
+                  Bağlantı gönder
                 </Text>
               )}
             </Pressable>
 
-            <Pressable onPress={() => router.push("/auth/forgotPassword")}>
+            <Pressable onPress={() => router.replace("/auth/login")}>
               <Text
                 style={{
                   color: colors.primary,
@@ -265,38 +227,51 @@ export default function LoginScreen() {
                   textAlign: "center",
                 }}
               >
-                Şifremi unuttum
+                Giriş ekranına dön
               </Text>
             </Pressable>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 5,
-            }}
-          >
-            <Text style={{ color: colors.mutedText, fontSize: 14 }}>
-              Hesabın yok mu?
-            </Text>
-
-            <Link href="/auth/register" asChild>
-              <Pressable>
-                <Text
-                  style={{
-                    color: colors.primary,
-                    fontSize: 14,
-                    fontWeight: "900",
-                  }}
-                >
-                  Kayıt ol
-                </Text>
-              </Pressable>
-            </Link>
           </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+function InfoBox({
+  text,
+  icon,
+  backgroundColor,
+  color,
+}: {
+  text: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  backgroundColor: string;
+  color: string;
+}) {
+  return (
+    <View
+      style={{
+        backgroundColor,
+        borderRadius: 14,
+        padding: 12,
+        flexDirection: "row",
+        gap: 8,
+        alignItems: "flex-start",
+      }}
+    >
+      <Ionicons name={icon} size={18} color={color} />
+
+      <Text
+        style={{
+          flex: 1,
+          color,
+          fontSize: 13,
+          fontWeight: "700",
+          lineHeight: 18,
+        }}
+      >
+        {text}
+      </Text>
+    </View>
   );
 }

@@ -1,5 +1,6 @@
 // app/record/[songId].tsx
 
+import { AuthGate } from "@/src/components/auth/AuthGate";
 import { useAuth } from "@/src/context/AuthContext";
 import { createAnalysisJob } from "@/src/services/analysisJobService";
 import { uploadRecordingAudio } from "@/src/services/audioUploadService";
@@ -28,7 +29,14 @@ import {
 } from "react-native";
 
 export default function RecordingScreen() {
+    return (
+        <AuthGate>
+            <RecordingScreenContent />
+        </AuthGate>
+    );
+}
 
+function RecordingScreenContent() {
     const { user } = useAuth();
     const [submitting, setSubmitting] = useState(false);
     const router = useRouter();
@@ -39,7 +47,7 @@ export default function RecordingScreen() {
 
     const [song, setSong] = useState<Song | null>(null);
     const [originalUrl, setOriginalUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [screenLoading, setScreenLoading] = useState(true);
     const [originalLoading, setOriginalLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [recordedUri, setRecordedUri] = useState<string | null>(null);
@@ -53,9 +61,23 @@ export default function RecordingScreen() {
     const originalStatus = useAudioPlayerStatus(originalPlayer);
 
     useEffect(() => {
+        const configureAudio = async () => {
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: false,
+                shouldRouteThroughEarpiece: false,
+                shouldPlayInBackground: false,
+                interruptionMode: "doNotMix",
+            });
+        };
+
+        configureAudio();
+    }, []);
+
+    useEffect(() => {
         async function prepare() {
             try {
-                setLoading(true);
+                setScreenLoading(true);
 
                 if (!songId) {
                     Alert.alert("Hata", "Parça bilgisi bulunamadı.");
@@ -100,7 +122,7 @@ export default function RecordingScreen() {
                 Alert.alert("Hata", "Kayıt ekranı hazırlanırken bir sorun oluştu.");
             } finally {
                 setOriginalLoading(false);
-                setLoading(false);
+                setScreenLoading(false);
             }
         }
 
@@ -121,6 +143,14 @@ export default function RecordingScreen() {
                 );
                 return;
             }
+
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: false,
+                shouldRouteThroughEarpiece: false,
+                shouldPlayInBackground: false,
+                interruptionMode: "doNotMix",
+            });
 
             originalPlayer.seekTo(0);
             originalPlayer.play();
@@ -226,7 +256,7 @@ export default function RecordingScreen() {
         }
     };
 
-    if (loading) {
+    if (screenLoading) {
         return (
             <View
                 style={{
