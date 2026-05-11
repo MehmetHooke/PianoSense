@@ -3,12 +3,14 @@
 import { db } from "@/src/services/firebase";
 import type { Song } from "@/src/types/song";
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    where,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
 } from "firebase/firestore";
 
 export async function getActiveSongs(): Promise<Song[]> {
@@ -52,4 +54,26 @@ export async function getSongById(songId: string): Promise<Song | null> {
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+}
+export async function seedDefaultSongs() {
+  const writes = Array.from({ length: 20 }, (_, index) => {
+    const songNumber = index + 1;
+    const fileName = `${songNumber}.wav`;
+
+    const songRef = doc(db, "songs", String(songNumber));
+
+    return setDoc(
+      songRef,
+      {
+        title: fileName,
+        isActive: true,
+        originalAudioPath: `songs/${fileName}`,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+
+  await Promise.all(writes);
 }

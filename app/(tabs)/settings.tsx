@@ -1,4 +1,5 @@
 import { auth } from "@/src/services/firebase";
+import { seedDefaultSongs } from "@/src/services/songService";
 import { useAppTheme } from "@/src/theme/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { signOut } from "firebase/auth";
@@ -14,6 +15,9 @@ export default function SettingsScreen() {
   const handleMockPress = (title: string) => {
     Alert.alert(title, "Bu alan şu an mock. Sonraki sprintte aktif edebiliriz.");
   };
+
+
+  
 
   const handleLogout = () => {
     Alert.alert("Çıkış yap", "Oturumu kapatmak istediğine emin misin?", [
@@ -272,6 +276,32 @@ export default function SettingsScreen() {
             }}
           >
             Çıkış yap
+          </Text>
+        </Pressable>
+
+                <Pressable
+          onPress={seedDefaultSongs}
+          style={({ pressed }) => ({
+            backgroundColor: colors.dangerSoft,
+            borderRadius: 18,
+            paddingVertical: 16,
+            paddingHorizontal: 16,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
+          <Text
+            style={{
+              color: colors.danger,
+              fontSize: 15,
+              fontWeight: "900",
+            }}
+          >
+            seed
           </Text>
         </Pressable>
       </View>

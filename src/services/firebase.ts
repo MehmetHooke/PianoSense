@@ -1,8 +1,7 @@
-// src/services/firebase.ts
-
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
+import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -17,7 +16,15 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-
 export const db = getFirestore(app);
-
 export const storage = getStorage(app);
+export const functions = getFunctions(app, "us-central1");
+
+if (__DEV__) {
+  connectAuthEmulator(auth, "http://10.0.2.2:9099", {
+    disableWarnings: true,
+  });
+
+  connectFirestoreEmulator(db, "10.0.2.2", 8080);
+  connectFunctionsEmulator(functions, "10.0.2.2", 5001);
+}

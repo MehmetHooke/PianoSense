@@ -256,6 +256,49 @@ function RecordingScreenContent() {
         }
     };
 
+    const handleDevMockAnalysis = async () => {
+        try {
+            if (!user) {
+                Alert.alert("Hata", "Kullanıcı oturumu bulunamadı.");
+                return;
+            }
+
+            if (!song) {
+                Alert.alert("Hata", "Parça bilgisi bulunamadı.");
+                return;
+            }
+
+            if (!songId) {
+                Alert.alert("Hata", "Parça ID bilgisi bulunamadı.");
+                return;
+            }
+
+            setSubmitting(true);
+
+            const recordingId = `dev-recording-${Date.now()}`;
+
+            const fakeRecordedAudioPath = `users/${user.uid}/songs/${songId}/recordings/${recordingId}.wav`;
+
+            const jobId = await createAnalysisJob({
+                userId: user.uid,
+                songId,
+                recordingId,
+                originalAudioPath: song.originalAudioPath,
+                recordedAudioPath: fakeRecordedAudioPath,
+            });
+
+            router.replace({
+                pathname: "/processing/[jobId]",
+                params: { jobId },
+            });
+        } catch (error) {
+            console.log("Dev mock analysis error:", error);
+            Alert.alert("Hata", "Dev analiz testi başlatılamadı.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     if (screenLoading) {
         return (
             <View
@@ -546,6 +589,32 @@ function RecordingScreenContent() {
                         {recordedUri}
                     </Text>
                 </View>
+            ) : null}
+
+            {/*  DEV only: tests callable analysis flow without real audio upload. */}
+            {__DEV__ ? (
+                <Pressable
+                    onPress={handleDevMockAnalysis}
+                    disabled={submitting || !song}
+                    style={{
+                        backgroundColor: "#4F46E5",
+                        borderRadius: 20,
+                        paddingVertical: 17,
+                        alignItems: "center",
+                        marginBottom: 12,
+                        opacity: submitting || !song ? 0.5 : 1,
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: "#FFFFFF",
+                            fontWeight: "900",
+                            fontSize: 16,
+                        }}
+                    >
+                        DEV: Mock Analiz Test Et
+                    </Text>
+                </Pressable>
             ) : null}
 
             <Pressable

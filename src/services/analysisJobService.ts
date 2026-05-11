@@ -1,16 +1,9 @@
 // src/services/analysisJobService.ts
 
-import { db } from "@/src/services/firebase";
-import type { AnalysisJob, AnalysisResult } from "@/src/types/analysisJob";
-import {
-    addDoc,
-    collection,
-    doc,
-    getDoc,
-    onSnapshot,
-    serverTimestamp,
-    updateDoc,
-} from "firebase/firestore";
+import { db, functions } from "@/src/services/firebase";
+import type { AnalysisJob } from "@/src/types/analysisJob";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 type CreateAnalysisJobParams = {
   userId: string;
@@ -20,27 +13,37 @@ type CreateAnalysisJobParams = {
   recordedAudioPath: string;
 };
 
+type CreateAnalysisJobCallablePayload = {
+  songId: string;
+  recordingId: string;
+  originalAudioPath: string;
+  recordedAudioPath: string;
+};
+
+type CreateAnalysisJobCallableResponse = {
+  ok: boolean;
+  jobId: string;
+};
+
 export async function createAnalysisJob({
-  userId,
   songId,
   recordingId,
   originalAudioPath,
   recordedAudioPath,
 }: CreateAnalysisJobParams): Promise<string> {
-  const jobsRef = collection(db, "analysisJobs");
+  const callable = httpsCallable<
+    CreateAnalysisJobCallablePayload,
+    CreateAnalysisJobCallableResponse
+  >(functions, "createAnalysisJob");
 
-  const jobDoc = await addDoc(jobsRef, {
-    userId,
+  const response = await callable({
     songId,
     recordingId,
     originalAudioPath,
     recordedAudioPath,
-    status: "processing",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   });
 
-  return jobDoc.id;
+  return response.data.jobId;
 }
 
 export function listenAnalysisJob(
@@ -108,94 +111,4 @@ export async function getAnalysisJobById(
     errorMessage: data.errorMessage,
     result: data.result,
   };
-}
-
-function getMockAnalysisResult(): AnalysisResult {
-  return {
-    overallScore: 82,
-    pitchScore: 86,
-    timingScore: 76,
-
-    totalNotes: 8,
-    correctNotes: 5,
-    wrongNotes: 1,
-    missedNotes: 1,
-    extraNotes: 1,
-
-    items: [
-      {
-        expectedNote: "C4",
-        playedNote: "C4",
-        expectedStart: 0.4,
-        playedStart: 0.42,
-        status: "correct",
-        timingOffsetMs: 20,
-      },
-      {
-        expectedNote: "D4",
-        playedNote: "D4",
-        expectedStart: 1.0,
-        playedStart: 1.12,
-        status: "timingLate",
-        timingOffsetMs: 120,
-      },
-      {
-        expectedNote: "E4",
-        playedNote: "F4",
-        expectedStart: 1.6,
-        playedStart: 1.61,
-        status: "wrongNote",
-        timingOffsetMs: 10,
-      },
-      {
-        expectedNote: "F4",
-        playedNote: null,
-        expectedStart: 2.2,
-        playedStart: null,
-        status: "missed",
-      },
-      {
-        expectedNote: "G4",
-        playedNote: "G4",
-        expectedStart: 2.8,
-        playedStart: 2.77,
-        status: "correct",
-        timingOffsetMs: -30,
-      },
-      {
-        expectedNote: "A4",
-        playedNote: "A4",
-        expectedStart: 3.4,
-        playedStart: 3.4,
-        status: "correct",
-        timingOffsetMs: 0,
-      },
-      {
-        expectedNote: "B4",
-        playedNote: "B4",
-        expectedStart: 4.0,
-        playedStart: 3.89,
-        status: "timingEarly",
-        timingOffsetMs: -110,
-      },
-      {
-        expectedNote: "C5",
-        playedNote: "C5",
-        expectedStart: 4.6,
-        playedStart: 4.62,
-        status: "correct",
-        timingOffsetMs: 20,
-      },
-    ],
-  };
-}
-
-export async function completeAnalysisJobWithMockResult(jobId: string) {
-  const jobRef = doc(db, "analysisJobs", jobId);
-
-  await updateDoc(jobRef, {
-    status: "completed",
-    result: getMockAnalysisResult(),
-    updatedAt: serverTimestamp(),
-  });
 }
