@@ -20,7 +20,10 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app, "us-central1");
 
-if (__DEV__) {
+const USE_FIREBASE_EMULATORS =
+  process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATORS === "true";
+
+if (__DEV__ && USE_FIREBASE_EMULATORS) {
   connectAuthEmulator(auth, "http://10.0.2.2:9099", {
     disableWarnings: true,
   });

@@ -14,76 +14,21 @@ setGlobalOptions({
 type CreateAnalysisJobPayload = {
   songId: string;
   recordingId: string;
-  originalAudioPath: string;
   recordedAudioPath: string;
 };
 
-type AnalysisItemStatus =
-  | "correct"
-  | "wrongNote"
-  | "missed"
-  | "extra"
-  | "timingEarly"
-  | "timingLate";
-
-type MockAnalysisItem = {
-  expectedNote: string;
-  playedNote: string | null;
-  expectedStart: number;
-  playedStart: number | null;
-  status: AnalysisItemStatus;
-  timingOffsetMs?: number;
+type CloudRunAnalyzeResponse = {
+  ok: boolean;
+  source: string;
+  jobId: string;
+  userId: string;
+  songId: string;
+  result: unknown;
 };
 
-const createMockResult = () => {
-  const items: MockAnalysisItem[] = [
-    {
-      expectedNote: "C4",
-      playedNote: "C4",
-      expectedStart: 0.5,
-      playedStart: 0.52,
-      status: "correct",
-      timingOffsetMs: 20,
-    },
-    {
-      expectedNote: "D4",
-      playedNote: "E4",
-      expectedStart: 1.1,
-      playedStart: 1.08,
-      status: "wrongNote",
-      timingOffsetMs: -20,
-    },
-    {
-      expectedNote: "F4",
-      playedNote: null,
-      expectedStart: 1.8,
-      playedStart: null,
-      status: "missed",
-    },
-    {
-      expectedNote: "G4",
-      playedNote: "G4",
-      expectedStart: 2.4,
-      playedStart: 2.7,
-      status: "timingLate",
-      timingOffsetMs: 300,
-    },
-  ];
-
-  return {
-    overallScore: 78,
-    pitchScore: 84,
-    timingScore: 70,
-
-    totalNotes: items.length,
-    correctNotes: items.filter((item) => item.status === "correct").length,
-    wrongNotes: items.filter((item) => item.status === "wrongNote").length,
-    missedNotes: items.filter((item) => item.status === "missed").length,
-    extraNotes: items.filter((item) => item.status === "extra").length,
-
-    items,
-  };
-};
+const CLOUD_RUN_ANALYZE_URL = process.env.CLOUD_RUN_ANALYZE_URL;
+const STORAGE_BUCKET =
+  process.env.STORAGE_BUCKET ?? "pianosense-64bc1.firebasestorage.app";
 
 export const createAnalysisJob = onCall<CreateAnalysisJobPayload>(
   async (request) => {
@@ -96,26 +41,58 @@ export const createAnalysisJob = onCall<CreateAnalysisJobPayload>(
       );
     }
 
-    const { songId, recordingId, originalAudioPath, recordedAudioPath } =
-      request.data;
-
-    if (!songId || !recordingId || !originalAudioPath || !recordedAudioPath) {
+    if (!CLOUD_RUN_ANALYZE_URL) {
       throw new HttpsError(
-        "invalid-argument",
-        "songId, recordingId, originalAudioPath ve recordedAudioPath zorunludur.",
+        "failed-precondition",
+        "Cloud Run analiz URL'i yapılandırılmamış.",
       );
     }
 
-    const expectedRecordedPrefix = `users/${uid}/`;
+    const { songId, recordingId, recordedAudioPath } = request.data;
+
+    if (!songId || !recordingId || !recordedAudioPath) {
+      throw new HttpsError(
+        "invalid-argument",
+        "songId, recordingId ve recordedAudioPath zorunludur.",
+      );
+    }
+
+    const expectedRecordedPrefix = `users/${uid}/songs/${songId}/recordings/`;
 
     if (!recordedAudioPath.startsWith(expectedRecordedPrefix)) {
       throw new HttpsError(
         "permission-denied",
-        "Bu kayıt dosyası bu kullanıcıya ait değil.",
+        "Bu kayıt dosyası bu kullanıcıya veya bu parçaya ait değil.",
       );
     }
 
     const db = admin.firestore();
+
+    const songRef = db.collection("songs").doc(songId);
+    const songSnapshot = await songRef.get();
+
+    if (!songSnapshot.exists) {
+      throw new HttpsError("not-found", "Seçilen parça bulunamadı.");
+    }
+
+    const songData = songSnapshot.data();
+
+    if (!songData?.originalAudioPath) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Seçilen parçanın orijinal ses dosyası tanımlı değil.",
+      );
+    }
+
+    if (songData.isActive === false) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Bu parça şu anda analiz için aktif değil.",
+      );
+    }
+
+    const originalAudioPath = songData.originalAudioPath as string;
+
     const jobRef = db.collection("analysisJobs").doc();
 
     await jobRef.set({
@@ -127,19 +104,93 @@ export const createAnalysisJob = onCall<CreateAnalysisJobPayload>(
       status: "processing",
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
+      startedAt: FieldValue.serverTimestamp(),
     });
 
-    const mockResult = createMockResult();
+    try {
+      const cloudRunResponse = await fetch(CLOUD_RUN_ANALYZE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jobId: jobRef.id,
+          userId: uid,
+          songId,
+          originalAudioPath,
+          recordedAudioPath,
+          bucketName: STORAGE_BUCKET,
+          deleteRecordedAfterAnalysis: false,
+        }),
+      });
 
-    await jobRef.update({
-      status: "completed",
-      result: mockResult,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
+      const responseText = await cloudRunResponse.text();
 
-    return {
-      ok: true,
-      jobId: jobRef.id,
-    };
+      if (!cloudRunResponse.ok) {
+        await jobRef.update({
+          status: "failed",
+          errorCode: "CLOUD_RUN_ANALYZE_FAILED",
+          errorMessage: responseText,
+          updatedAt: FieldValue.serverTimestamp(),
+          failedAt: FieldValue.serverTimestamp(),
+        });
+
+        throw new HttpsError(
+          "internal",
+          "Ses analizi başarısız oldu.",
+          responseText,
+        );
+      }
+
+      const cloudRunData = JSON.parse(responseText) as CloudRunAnalyzeResponse;
+
+      if (!cloudRunData.ok || !cloudRunData.result) {
+        await jobRef.update({
+          status: "failed",
+          errorCode: "INVALID_ANALYZE_RESPONSE",
+          errorMessage: "Cloud Run geçersiz analiz sonucu döndürdü.",
+          updatedAt: FieldValue.serverTimestamp(),
+          failedAt: FieldValue.serverTimestamp(),
+        });
+
+        throw new HttpsError(
+          "internal",
+          "Cloud Run geçersiz analiz sonucu döndürdü.",
+        );
+      }
+
+      await jobRef.update({
+        status: "completed",
+        result: cloudRunData.result,
+        updatedAt: FieldValue.serverTimestamp(),
+        completedAt: FieldValue.serverTimestamp(),
+      });
+
+      return {
+        ok: true,
+        jobId: jobRef.id,
+      };
+    } catch (error) {
+      console.error("createAnalysisJob error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Bilinmeyen analiz hatası oluştu.";
+
+      await jobRef.update({
+        status: "failed",
+        errorCode: "ANALYSIS_JOB_FAILED",
+        errorMessage: message,
+        updatedAt: FieldValue.serverTimestamp(),
+        failedAt: FieldValue.serverTimestamp(),
+      });
+
+      throw new HttpsError(
+        "internal",
+        "Analiz başlatılırken bir sorun oluştu.",
+        message,
+      );
+    }
   },
 );

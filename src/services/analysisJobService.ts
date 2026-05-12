@@ -6,17 +6,14 @@ import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 type CreateAnalysisJobParams = {
-  userId: string;
   songId: string;
   recordingId: string;
-  originalAudioPath: string;
   recordedAudioPath: string;
 };
 
 type CreateAnalysisJobCallablePayload = {
   songId: string;
   recordingId: string;
-  originalAudioPath: string;
   recordedAudioPath: string;
 };
 
@@ -28,7 +25,6 @@ type CreateAnalysisJobCallableResponse = {
 export async function createAnalysisJob({
   songId,
   recordingId,
-  originalAudioPath,
   recordedAudioPath,
 }: CreateAnalysisJobParams): Promise<string> {
   const callable = httpsCallable<
@@ -39,7 +35,6 @@ export async function createAnalysisJob({
   const response = await callable({
     songId,
     recordingId,
-    originalAudioPath,
     recordedAudioPath,
   });
 
@@ -73,6 +68,9 @@ export function listenAnalysisJob(
         status: data.status,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
+        startedAt: data.startedAt,
+        completedAt: data.completedAt,
+        failedAt: data.failedAt,
         errorCode: data.errorCode,
         errorMessage: data.errorMessage,
         result: data.result,
@@ -107,6 +105,9 @@ export async function getAnalysisJobById(
     status: data.status,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
+    startedAt: data.startedAt,
+    completedAt: data.completedAt,
+    failedAt: data.failedAt,
     errorCode: data.errorCode,
     errorMessage: data.errorMessage,
     result: data.result,

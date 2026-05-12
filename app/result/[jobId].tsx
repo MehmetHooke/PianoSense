@@ -5,13 +5,13 @@ import { getAnalysisJobById } from "@/src/services/analysisJobService";
 import type { AnalysisJob, AnalysisResultItem } from "@/src/types/analysisJob";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Pressable,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  Text,
+  View,
 } from "react-native";
 
 function getStatusLabel(status: AnalysisResultItem["status"]) {
@@ -33,6 +33,25 @@ function getStatusLabel(status: AnalysisResultItem["status"]) {
   }
 }
 
+function getStatusDescription(item: AnalysisResultItem) {
+  switch (item.status) {
+    case "correct":
+      return "Nota ve zamanlama doğru.";
+    case "wrongNote":
+      return `${item.expectedNote ?? "-"} bekleniyordu, ${item.playedNote ?? "-"} çalındı.`;
+    case "missed":
+      return `${item.expectedNote ?? "-"} notası çalınmamış görünüyor.`;
+    case "extra":
+      return `${item.playedNote ?? "-"} fazladan çalınmış görünüyor.`;
+    case "timingEarly":
+      return `${Math.abs(item.timingOffsetMs ?? 0)} ms erken girdin.`;
+    case "timingLate":
+      return `${Math.abs(item.timingOffsetMs ?? 0)} ms geç girdin.`;
+    default:
+      return "";
+  }
+}
+
 function getStatusColor(status: AnalysisResultItem["status"]) {
   switch (status) {
     case "correct":
@@ -49,6 +68,57 @@ function getStatusColor(status: AnalysisResultItem["status"]) {
     default:
       return "#6B7280";
   }
+}
+
+function getStatusIcon(status: AnalysisResultItem["status"]) {
+  switch (status) {
+    case "correct":
+      return "checkmark";
+    case "wrongNote":
+      return "close";
+    case "missed":
+      return "remove";
+    case "extra":
+      return "add";
+    case "timingEarly":
+    case "timingLate":
+      return "time";
+    default:
+      return "ellipse";
+  }
+}
+
+function formatSeconds(value: number | null) {
+  if (value === null || value === undefined) return "-";
+  return `${value.toFixed(2)}s`;
+}
+
+function getMainFeedback(job: AnalysisJob) {
+  const result = job.result;
+
+  if (!result) return "";
+
+  if (result.pitchScore >= 90 && result.timingScore >= 80) {
+    return "Harika performans. Notaların ve zamanlaman oldukça iyi görünüyor.";
+  }
+
+  if (result.pitchScore >= 80 && result.timingScore < 70) {
+    return "Notaları büyük ölçüde doğru çaldın. Şimdi asıl odaklanman gereken şey zamanlama.";
+  }
+
+  if (result.pitchScore < 70 && result.wrongNotes > 0) {
+    return "Bazı notalarda hata var. Aşağıdaki detaylardan hangi notaların değiştiğini görebilirsin.";
+  }
+
+  if (result.missedNotes > 0) {
+    return "Bazı notaları kaçırmış görünüyorsun. Özellikle eksik notalara tekrar çalışmak iyi olur.";
+  }
+
+  if (result.extraNotes > 0) {
+    return "Melodiye fazladan notalar eklenmiş. Daha sade ve kontrollü çalmayı deneyebilirsin.";
+  }
+
+  return "Kaydın analiz edildi. Detaylardan güçlü ve zayıf noktalarını görebilirsin.";
 }
 
 export default function ResultScreen() {
@@ -83,6 +153,11 @@ function ResultScreenContent() {
     loadResult();
   }, [jobId]);
 
+  const feedback = useMemo(() => {
+    if (!job) return "";
+    return getMainFeedback(job);
+  }, [job]);
+
   if (loading) {
     return (
       <View
@@ -94,6 +169,9 @@ function ResultScreenContent() {
         }}
       >
         <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={{ marginTop: 12, color: "#6B7280" }}>
+          Sonuç hazırlanıyor...
+        </Text>
       </View>
     );
   }
@@ -120,6 +198,17 @@ function ResultScreenContent() {
           }}
         >
           Sonuç bulunamadı
+        </Text>
+
+        <Text
+          style={{
+            marginTop: 8,
+            color: "#6B7280",
+            lineHeight: 22,
+            textAlign: "center",
+          }}
+        >
+          Analiz tamamlanmamış veya sonuç kaydedilememiş olabilir.
         </Text>
 
         <Pressable
@@ -204,8 +293,7 @@ function ResultScreenContent() {
               marginBottom: 20,
             }}
           >
-            Bu sonuç şimdilik mock veridir. Ama ekran, gerçek analiz sonucu
-            geldiğinde aynı Firestore datasını gösterecek.
+            {feedback}
           </Text>
 
           <View
@@ -254,7 +342,7 @@ function ResultScreenContent() {
                 }}
               >
                 <Text style={{ color: "#6B7280", fontSize: 12 }}>
-                  Nota
+                  Nota doğruluğu
                 </Text>
                 <Text
                   style={{
@@ -296,84 +384,25 @@ function ResultScreenContent() {
           <View
             style={{
               flexDirection: "row",
+              flexWrap: "wrap",
               gap: 10,
-              marginBottom: 16,
+              marginBottom: 18,
             }}
           >
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 18,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-              }}
-            >
-              <Text style={{ color: "#6B7280", fontSize: 12 }}>
-                Doğru
-              </Text>
-              <Text
-                style={{
-                  color: "#16A34A",
-                  fontSize: 22,
-                  fontWeight: "900",
-                  marginTop: 4,
-                }}
-              >
-                {result.correctNotes}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 18,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-              }}
-            >
-              <Text style={{ color: "#6B7280", fontSize: 12 }}>
-                Yanlış
-              </Text>
-              <Text
-                style={{
-                  color: "#EF4444",
-                  fontSize: 22,
-                  fontWeight: "900",
-                  marginTop: 4,
-                }}
-              >
-                {result.wrongNotes}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 18,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-              }}
-            >
-              <Text style={{ color: "#6B7280", fontSize: 12 }}>
-                Kaçan
-              </Text>
-              <Text
-                style={{
-                  color: "#F59E0B",
-                  fontSize: 22,
-                  fontWeight: "900",
-                  marginTop: 4,
-                }}
-              >
-                {result.missedNotes}
-              </Text>
-            </View>
+            <MetricCard label="Doğru" value={result.correctNotes} color="#16A34A" />
+            <MetricCard label="Yanlış" value={result.wrongNotes} color="#EF4444" />
+            <MetricCard label="Kaçan" value={result.missedNotes} color="#F59E0B" />
+            <MetricCard label="Fazla" value={result.extraNotes} color="#7C3AED" />
+            <MetricCard
+              label="Erken"
+              value={result.timingEarlyNotes ?? 0}
+              color="#2563EB"
+            />
+            <MetricCard
+              label="Geç"
+              value={result.timingLateNotes ?? 0}
+              color="#2563EB"
+            />
           </View>
 
           <Text
@@ -390,6 +419,7 @@ function ResultScreenContent() {
       }
       renderItem={({ item, index }) => {
         const color = getStatusColor(item.status);
+        const icon = getStatusIcon(item.status);
 
         return (
           <View
@@ -407,17 +437,15 @@ function ResultScreenContent() {
           >
             <View
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 12,
-                backgroundColor: "#F8FAFC",
+                width: 36,
+                height: 36,
+                borderRadius: 13,
+                backgroundColor: `${color}18`,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#6B7280", fontWeight: "900" }}>
-                {index + 1}
-              </Text>
+              <Ionicons name={icon as any} size={18} color={color} />
             </View>
 
             <View style={{ flex: 1 }}>
@@ -428,7 +456,18 @@ function ResultScreenContent() {
                   fontWeight: "900",
                 }}
               >
-                {item.expectedNote} → {item.playedNote ?? "-"}
+                {item.expectedNote ?? "-"} → {item.playedNote ?? "-"}
+              </Text>
+
+              <Text
+                style={{
+                  color: "#6B7280",
+                  marginTop: 3,
+                  fontSize: 13,
+                  lineHeight: 18,
+                }}
+              >
+                {getStatusDescription(item)}
               </Text>
 
               <Text
@@ -438,9 +477,9 @@ function ResultScreenContent() {
                   fontSize: 12,
                 }}
               >
-                Beklenen: {item.expectedStart}s
+                Beklenen: {formatSeconds(item.expectedStart)}
                 {item.playedStart !== null
-                  ? ` / Çalınan: ${item.playedStart}s`
+                  ? ` / Çalınan: ${formatSeconds(item.playedStart)}`
                   : ""}
               </Text>
             </View>
@@ -467,5 +506,41 @@ function ResultScreenContent() {
         );
       }}
     />
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <View
+      style={{
+        width: "31%",
+        minWidth: 96,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 18,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: "#E5E7EB",
+      }}
+    >
+      <Text style={{ color: "#6B7280", fontSize: 12 }}>{label}</Text>
+      <Text
+        style={{
+          color,
+          fontSize: 22,
+          fontWeight: "900",
+          marginTop: 4,
+        }}
+      >
+        {value}
+      </Text>
+    </View>
   );
 }

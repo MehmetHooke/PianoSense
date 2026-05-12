@@ -51,6 +51,9 @@ function RecordingScreenContent() {
     const [originalLoading, setOriginalLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [recordedUri, setRecordedUri] = useState<string | null>(null);
+    const [submitStep, setSubmitStep] = useState<
+        "idle" | "uploading" | "creatingJob"
+    >("idle");
 
     const originalSource = useMemo(() => {
         if (!originalUrl) return null;
@@ -229,6 +232,7 @@ function RecordingScreenContent() {
             }
 
             setSubmitting(true);
+            setSubmitStep("uploading");
 
             const uploadResult = await uploadRecordingAudio({
                 userId: user.uid,
@@ -236,11 +240,11 @@ function RecordingScreenContent() {
                 localUri: recordedUri,
             });
 
+            setSubmitStep("creatingJob");
+
             const jobId = await createAnalysisJob({
-                userId: user.uid,
                 songId,
                 recordingId: uploadResult.recordingId,
-                originalAudioPath: song.originalAudioPath,
                 recordedAudioPath: uploadResult.recordedAudioPath,
             });
 
@@ -250,52 +254,13 @@ function RecordingScreenContent() {
             });
         } catch (error) {
             console.log("Send to analysis error:", error);
-            Alert.alert("Hata", "Kayıt analize gönderilirken bir sorun oluştu.");
+            Alert.alert(
+                "Analiz başlatılamadı",
+                "Kayıt analize gönderilirken bir sorun oluştu. Lütfen tekrar dene."
+            );
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const handleDevMockAnalysis = async () => {
-        try {
-            if (!user) {
-                Alert.alert("Hata", "Kullanıcı oturumu bulunamadı.");
-                return;
-            }
-
-            if (!song) {
-                Alert.alert("Hata", "Parça bilgisi bulunamadı.");
-                return;
-            }
-
-            if (!songId) {
-                Alert.alert("Hata", "Parça ID bilgisi bulunamadı.");
-                return;
-            }
-
-            setSubmitting(true);
-
-            const recordingId = `dev-recording-${Date.now()}`;
-
-            const fakeRecordedAudioPath = `users/${user.uid}/songs/${songId}/recordings/${recordingId}.wav`;
-
-            const jobId = await createAnalysisJob({
-                userId: user.uid,
-                songId,
-                recordingId,
-                originalAudioPath: song.originalAudioPath,
-                recordedAudioPath: fakeRecordedAudioPath,
-            });
-
-            router.replace({
-                pathname: "/processing/[jobId]",
-                params: { jobId },
-            });
-        } catch (error) {
-            console.log("Dev mock analysis error:", error);
-            Alert.alert("Hata", "Dev analiz testi başlatılamadı.");
-        } finally {
-            setSubmitting(false);
+            setSubmitStep("idle");
         }
     };
 
@@ -331,8 +296,17 @@ function RecordingScreenContent() {
             }}
         >
             <Pressable
-                onPress={() => router.back()}
-                style={{
+                onPress={() => {
+                    if (recorderState.isRecording) {
+                        Alert.alert(
+                            "Kayıt devam ediyor",
+                            "Geri dönmeden önce kaydı durdurmalısın."
+                        );
+                        return;
+                    }
+
+                    router.back();
+                }} style={{
                     width: 44,
                     height: 44,
                     borderRadius: 16,
@@ -421,7 +395,7 @@ function RecordingScreenContent() {
                                 fontWeight: "900",
                             }}
                         >
-                            1. Orijinali dinle
+                            Orijinali parça
                         </Text>
 
                         <Text
@@ -438,13 +412,13 @@ function RecordingScreenContent() {
 
                 <Pressable
                     onPress={originalStatus.playing ? pauseOriginal : playOriginal}
-                    disabled={originalLoading || !originalUrl}
+                    disabled={originalLoading || !originalUrl || submitting}
                     style={{
                         backgroundColor: originalStatus.playing ? "#111827" : "#4F46E5",
                         borderRadius: 18,
                         paddingVertical: 15,
                         alignItems: "center",
-                        opacity: originalLoading || !originalUrl ? 0.5 : 1,
+                        opacity: originalLoading || !originalUrl || submitting ? 0.5 : 1,
                         flexDirection: "row",
                         justifyContent: "center",
                         gap: 8,
@@ -470,17 +444,17 @@ function RecordingScreenContent() {
                         {originalStatus.playing ? "Durdur" : "Orijinali Oynat"}
                     </Text>
                 </Pressable>
-
                 <Text
                     style={{
                         color: "#9CA3AF",
                         fontSize: 12,
                         marginTop: 12,
+                        lineHeight: 18,
                     }}
-                    numberOfLines={1}
                 >
-                    {song?.originalAudioPath}
+                    İpucu: Melodiyi bir kez dinleyip ritmini aklında tut. Kayda başlamadan önce ortamın sessiz olduğundan emin ol.
                 </Text>
+
             </View>
 
             <View
@@ -536,13 +510,13 @@ function RecordingScreenContent() {
 
                 <Pressable
                     onPress={recorderState.isRecording ? stopRecording : startRecording}
-                    disabled={!permissionGranted}
+                    disabled={!permissionGranted || submitting}
                     style={{
                         backgroundColor: recorderState.isRecording ? "#EF4444" : "#4F46E5",
                         borderRadius: 18,
                         paddingVertical: 16,
                         alignItems: "center",
-                        opacity: permissionGranted ? 1 : 0.5,
+                        opacity: permissionGranted && !submitting ? 1 : 0.5,
                     }}
                 >
                     <Text
@@ -584,38 +558,12 @@ function RecordingScreenContent() {
                             lineHeight: 20,
                             fontSize: 13,
                         }}
-                        numberOfLines={2}
                     >
-                        {recordedUri}
+                        Kaydın hazır. Şimdi analize göndererek orijinal melodiyle karşılaştırabilirsin.
                     </Text>
                 </View>
             ) : null}
 
-            {/*  DEV only: tests callable analysis flow without real audio upload. */}
-            {__DEV__ ? (
-                <Pressable
-                    onPress={handleDevMockAnalysis}
-                    disabled={submitting || !song}
-                    style={{
-                        backgroundColor: "#4F46E5",
-                        borderRadius: 20,
-                        paddingVertical: 17,
-                        alignItems: "center",
-                        marginBottom: 12,
-                        opacity: submitting || !song ? 0.5 : 1,
-                    }}
-                >
-                    <Text
-                        style={{
-                            color: "#FFFFFF",
-                            fontWeight: "900",
-                            fontSize: 16,
-                        }}
-                    >
-                        DEV: Mock Analiz Test Et
-                    </Text>
-                </Pressable>
-            ) : null}
 
             <Pressable
                 onPress={handleSendToAnalysis}
@@ -629,15 +577,30 @@ function RecordingScreenContent() {
                         recordedUri && !recorderState.isRecording && !submitting ? 1 : 0.45,
                 }}
             >
-                <Text
+                <View
                     style={{
-                        color: "#FFFFFF",
-                        fontWeight: "900",
-                        fontSize: 16,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
                     }}
                 >
-                    {submitting ? "Analize gönderiliyor..." : "Analize Gönder"}
-                </Text>
+                    {submitting ? <ActivityIndicator color="#FFFFFF" /> : null}
+
+                    <Text
+                        style={{
+                            color: "#FFFFFF",
+                            fontWeight: "900",
+                            fontSize: 16,
+                        }}
+                    >
+                        {submitting
+                            ? submitStep === "uploading"
+                                ? "Kayıt yükleniyor..."
+                                : "Analiz başlatılıyor..."
+                            : "Analize Gönder"}
+                    </Text>
+                </View>
             </Pressable>
         </ScrollView>
     );

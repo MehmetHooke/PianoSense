@@ -18,12 +18,21 @@ export type AnalysisResultItemStatus =
   | "timingLate";
 
 export type AnalysisResultItem = {
-  expectedNote: string;
+  expectedNote: string | null;
   playedNote: string | null;
-  expectedStart: number;
+  expectedStart: number | null;
   playedStart: number | null;
   status: AnalysisResultItemStatus;
-  timingOffsetMs?: number;
+  timingOffsetMs?: number | null;
+};
+
+export type AnalysisDebugNote = {
+  note: string;
+  midi: number;
+  start: number;
+  end: number;
+  duration: number;
+  confidence: number;
 };
 
 export type AnalysisResult = {
@@ -37,7 +46,15 @@ export type AnalysisResult = {
   missedNotes: number;
   extraNotes: number;
 
+  timingEarlyNotes?: number;
+  timingLateNotes?: number;
+
   items: AnalysisResultItem[];
+
+  debug?: {
+    originalNotes?: AnalysisDebugNote[];
+    recordedNotes?: AnalysisDebugNote[];
+  };
 };
 
 export type AnalysisJob = {
@@ -54,6 +71,9 @@ export type AnalysisJob = {
 
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  startedAt?: Timestamp;
+  completedAt?: Timestamp;
+  failedAt?: Timestamp;
 
   errorCode?: string;
   errorMessage?: string;
