@@ -2,13 +2,12 @@
 
 import { AuthGate } from "@/src/components/auth/AuthGate";
 import {
-    completeAnalysisJobWithMockResult,
-    listenAnalysisJob,
+  listenAnalysisJob,
 } from "@/src/services/analysisJobService";
 import type { AnalysisJob } from "@/src/types/analysisJob";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
 
 export default function ProcessingScreen() {
@@ -24,7 +23,6 @@ function ProcessingScreenContent() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
 
   const [job, setJob] = useState<AnalysisJob | null>(null);
-  const mockStartedRef = useRef(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -63,20 +61,6 @@ function ProcessingScreenContent() {
 
     return unsubscribe;
   }, [jobId, router]);
-
-  useEffect(() => {
-    if (!jobId || mockStartedRef.current) return;
-
-    mockStartedRef.current = true;
-
-    const timer = setTimeout(() => {
-      completeAnalysisJobWithMockResult(jobId).catch((error) => {
-        console.log("Mock complete error:", error);
-      });
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [jobId]);
 
   return (
     <View

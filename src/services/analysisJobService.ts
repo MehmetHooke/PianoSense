@@ -2,7 +2,17 @@
 
 import { db, functions } from "@/src/services/firebase";
 import type { AnalysisJob } from "@/src/types/analysisJob";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 type CreateAnalysisJobParams = {
@@ -112,4 +122,43 @@ export async function getAnalysisJobById(
     errorMessage: data.errorMessage,
     result: data.result,
   };
+}
+
+export async function getCompletedAnalysisJobsByUser(
+  userId: string,
+  maxCount = 20,
+): Promise<AnalysisJob[]> {
+  const jobsRef = collection(db, "analysisJobs");
+
+  const q = query(
+    jobsRef,
+    where("userId", "==", userId),
+    where("status", "==", "completed"),
+    orderBy("completedAt", "desc"),
+    limit(maxCount),
+  );
+
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+
+    return {
+      id: docSnap.id,
+      userId: data.userId,
+      songId: data.songId,
+      recordingId: data.recordingId,
+      originalAudioPath: data.originalAudioPath,
+      recordedAudioPath: data.recordedAudioPath,
+      status: data.status,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+      startedAt: data.startedAt,
+      completedAt: data.completedAt,
+      failedAt: data.failedAt,
+      errorCode: data.errorCode,
+      errorMessage: data.errorMessage,
+      result: data.result,
+    };
+  });
 }

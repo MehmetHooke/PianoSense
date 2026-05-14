@@ -1,389 +1,179 @@
-import SettingsSection from "@/src/components/profile/SettingsSection";
+import { AppInfoCard } from "@/src/components/settings/AppInfoCard";
+import { ProfileSummaryCard } from "@/src/components/settings/ProfileSummaryCard";
+import { SettingsSectionAccordion } from "@/src/components/settings/SettingsSectionAccordion";
+import { ThemeSettingsCard } from "@/src/components/settings/ThemeSettingsCard";
 import { auth } from "@/src/services/firebase";
-import { seedDefaultSongs } from "@/src/services/songService";
 import { useAppTheme } from "@/src/theme/useTheme";
+import { alpha } from "@/src/utils/color";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text
+} from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const themeImage = require("@/src/assets/images/profile/solar-eclipse.png");
+
+type ExpandedSetting = "theme" | null;
+
+const settingsLayoutTransition = LinearTransition.springify()
+  .damping(45)
+  .stiffness(200);
 
 export default function ProfileScreen() {
-  
-  const { colors, theme, toggleTheme } = useAppTheme();
-  const user = auth.currentUser;
-  const userName = user?.displayName || "PianoSense Kullanıcısı";
-  const userEmail = user?.email || "Giriş yapılmış hesap";
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
 
-  const handleMockPress = (title: string) => {
-    Alert.alert(title, "Bu alan şu an mock. Sonraki sprintte aktif edebiliriz.");
+  const [expandedSetting, setExpandedSetting] =
+    useState<ExpandedSetting>("theme");
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  const user = auth.currentUser;
+
+  const toggleSetting = (setting: Exclude<ExpandedSetting, null>) => {
+    setExpandedSetting((prev) => (prev === setting ? null : setting));
   };
 
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      await signOut(auth);
+      router.replace("/auth/login");
+    } catch (error) {
+      console.log("Logout error:", error);
 
-  
-
-  const handleLogout = () => {
-    Alert.alert("Çıkış yap", "Oturumu kapatmak istediğine emin misin?", [
-      { text: "Vazgeç", style: "cancel" },
-      {
-        text: "Çıkış yap",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await signOut(auth);
-          } catch (error) {
-            console.error("LOGOUT ERROR:", error);
-            Alert.alert("Hata", "Çıkış yapılırken bir sorun oluştu.");
-          }
-        },
-      },
-    ]);
+      Alert.alert(
+        "Çıkış yapılamadı",
+        "Hesabından çıkış yapılırken bir sorun oluştu. Lütfen tekrar dene.",
+      );
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20 }}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+      }}
     >
-      {/* Header */}
-      <View style={{ gap: 6, marginTop: 8 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 30,
-            fontWeight: "900",
-          }}
-        >
-          Ayarlar
-        </Text>
-
-        <Text
-          style={{
-            color: colors.mutedText,
-            fontSize: 14,
-            lineHeight: 20,
-          }}
-        >
-          Hesabını, uygulama tercihlerini ve oturum işlemlerini buradan yönet.
-        </Text>
-      </View>
-
-      {/* Profile Card */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 28,
-          padding: 18,
-          borderWidth: 1,
-          borderColor: colors.softBorder ?? colors.border,
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 18,
+          paddingTop: 40,
+          paddingBottom: Math.max(insets.bottom, 12) + 120,
           gap: 16,
         }}
+        showsVerticalScrollIndicator={false}
       >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
-          <View
+        <Animated.View layout={settingsLayoutTransition}>
+          <Text
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 22,
-              backgroundColor: colors.primarySoft,
+              color: colors.text,
+              fontSize: 30,
+              fontWeight: "900",
+              letterSpacing: -0.8,
+            }}
+          >
+            Profil
+          </Text>
+
+          <Text
+            style={{
+              color: colors.mutedText,
+              fontSize: 14,
+              fontWeight: "600",
+              lineHeight: 21,
+              marginTop: 5,
+            }}
+          >
+            Hesap bilgilerini görüntüle ve uygulama görünümünü kişiselleştir.
+          </Text>
+        </Animated.View>
+
+        <Animated.View layout={settingsLayoutTransition}>
+          <ProfileSummaryCard
+            displayName={user?.displayName}
+            email={user?.email}
+          />
+        </Animated.View>
+
+        <SettingsSectionAccordion
+          title="Tema"
+          description="Uygulama görünümünü açık veya koyu tema olarak değiştir."
+          iconSource={themeImage}
+          iconBackgroundColor={colors.primarySoft}
+          iconBorderColor={alpha(colors.primary, 0.18)}
+          expanded={expandedSetting === "theme"}
+          onPress={() => toggleSetting("theme")}
+          colors={colors}
+        >
+          <ThemeSettingsCard />
+        </SettingsSectionAccordion>
+
+        <Animated.View layout={settingsLayoutTransition}>
+          <AppInfoCard />
+        </Animated.View>
+
+        <Animated.View layout={settingsLayoutTransition}>
+          <Pressable
+            onPress={handleLogout}
+            disabled={logoutLoading}
+            style={({ pressed }) => ({
+              backgroundColor: colors.danger,
+              borderRadius: 20,
+              paddingVertical: 15,
+              paddingHorizontal: 16,
               alignItems: "center",
               justifyContent: "center",
-            }}
+              flexDirection: "row",
+              gap: 9,
+              opacity: pressed || logoutLoading ? 0.86 : 1,
+              transform: [{ scale: pressed ? 0.99 : 1 }],
+              shadowColor: colors.shadow,
+              shadowOpacity: 0.06,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 2,
+            })}
           >
-            <Ionicons name="musical-notes" size={28} color={colors.primary} />
-          </View>
+            {logoutLoading ? (
+              <ActivityIndicator color={colors.primaryForeground} />
+            ) : (
+              <>
+                <Ionicons
+                  name="log-out-outline"
+                  size={20}
+                  color={colors.primaryForeground}
+                />
 
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 18,
-                fontWeight: "900",
-              }}
-            >
-              {userName}
-            </Text>
-
-            <Text
-              style={{
-                color: colors.mutedText,
-                fontSize: 14,
-                fontWeight: "600",
-              }}
-            >
-              {userEmail}
-            </Text>
-
-            <View
-              style={{
-                alignSelf: "flex-start",
-                marginTop: 6,
-                backgroundColor: colors.primarySoft,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 999,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 12,
-                  fontWeight: "800",
-                }}
-              >
-                MVP Demo Hesabı
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Account Section */}
-      <SettingsSection title="Hesap">
-        <SettingsRow
-          icon="person-outline"
-          title="Profil bilgileri"
-          subtitle="Ad, e-posta ve hesap bilgileri"
-          onPress={() => handleMockPress("Profil bilgileri")}
-          colors={colors}
-        />
-        <SettingsRow
-          icon="lock-closed-outline"
-          title="Şifre değiştir"
-          subtitle="Hesap güvenliği ayarları"
-          onPress={() => handleMockPress("Şifre değiştir")}
-          colors={colors}
-        />
-        <SettingsRow
-          icon="mail-outline"
-          title="E-posta doğrulama"
-          subtitle="Hesap e-posta durumunu kontrol et"
-          onPress={() => handleMockPress("E-posta doğrulama")}
-          colors={colors}
-          isLast
-        />
-      </SettingsSection>
-
-      {/* App Preferences */}
-      <SettingsSection title="Uygulama">
-        <SettingsRow
-          icon="color-palette-outline"
-          title="Tema"
-          subtitle={`Şu an: ${theme === "dark" ? "Koyu tema" : "Açık tema"}`}
-          rightContent={
-            <Pressable
-              onPress={toggleTheme}
-              style={({ pressed }) => ({
-                backgroundColor: colors.primarySoft,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 12,
-                opacity: pressed ? 0.8 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontWeight: "800",
-                  fontSize: 12,
-                }}
-              >
-                Değiştir
-              </Text>
-            </Pressable>
-          }
-          colors={colors}
-        />
-
-        <SettingsRow
-          icon="language-outline"
-          title="Dil"
-          subtitle="Türkçe"
-          onPress={() => handleMockPress("Dil")}
-          colors={colors}
-        />
-
-        <SettingsRow
-          icon="notifications-outline"
-          title="Bildirimler"
-          subtitle="Yakında eklenecek"
-          onPress={() => handleMockPress("Bildirimler")}
-          colors={colors}
-          isLast
-        />
-      </SettingsSection>
-
-      {/* Support / About */}
-      <SettingsSection title="Destek & Hakkında">
-        <SettingsRow
-          icon="help-circle-outline"
-          title="Yardım"
-          subtitle="Sık sorulan sorular ve destek"
-          onPress={() => handleMockPress("Yardım")}
-          colors={colors}
-        />
-        <SettingsRow
-          icon="document-text-outline"
-          title="Gizlilik Politikası"
-          subtitle="Uygulama veri kullanımı"
-          onPress={() => handleMockPress("Gizlilik Politikası")}
-          colors={colors}
-        />
-        <SettingsRow
-          icon="information-circle-outline"
-          title="Uygulama sürümü"
-          subtitle="v0.1.0 MVP"
-          onPress={() => handleMockPress("Uygulama sürümü")}
-          colors={colors}
-          isLast
-        />
-      </SettingsSection>
-
-      {/* Logout */}
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 24,
-          padding: 14,
-          borderWidth: 1,
-          borderColor: colors.softBorder ?? colors.border,
-        }}
-      >
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => ({
-            backgroundColor: colors.dangerSoft,
-            borderRadius: 18,
-            paddingVertical: 16,
-            paddingHorizontal: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-          <Text
-            style={{
-              color: colors.danger,
-              fontSize: 15,
-              fontWeight: "900",
-            }}
-          >
-            Çıkış yap
-          </Text>
-        </Pressable>
-
-                <Pressable
-          onPress={seedDefaultSongs}
-          style={({ pressed }) => ({
-            backgroundColor: colors.dangerSoft,
-            borderRadius: 18,
-            paddingVertical: 16,
-            paddingHorizontal: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Ionicons name="log-out-outline" size={20} color={colors.danger} />
-          <Text
-            style={{
-              color: colors.danger,
-              fontSize: 15,
-              fontWeight: "900",
-            }}
-          >
-            seed
-          </Text>
-        </Pressable>
-      </View>
-    </ScrollView>
-  );
-}
-
-
-
-function SettingsRow({
-  icon,
-  title,
-  subtitle,
-  onPress,
-  rightContent,
-  colors,
-  isLast = false,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  onPress?: () => void;
-  rightContent?: React.ReactNode;
-  colors: any;
-  isLast?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        backgroundColor: pressed && onPress ? colors.primarySoft : colors.card,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: colors.softBorder ?? colors.border,
-      })}
-    >
-      <View
-        style={{
-          width: 42,
-          height: 42,
-          borderRadius: 14,
-          backgroundColor: colors.primarySoft,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name={icon} size={20} color={colors.primary} />
-      </View>
-
-      <View style={{ flex: 1, gap: 3 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 15,
-            fontWeight: "800",
-          }}
-        >
-          {title}
-        </Text>
-
-        <Text
-          style={{
-            color: colors.mutedText,
-            fontSize: 13,
-            lineHeight: 18,
-          }}
-        >
-          {subtitle}
-        </Text>
-      </View>
-
-      {rightContent ? (
-        rightContent
-      ) : (
-        <Ionicons name="chevron-forward" size={18} color={colors.subtleText} />
-      )}
-    </Pressable>
+                <Text
+                  style={{
+                    color: colors.primaryForeground,
+                    fontSize: 15,
+                    fontWeight: "900",
+                  }}
+                >
+                  Çıkış yap
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </Animated.View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
