@@ -13,7 +13,7 @@ export const lightColors = {
   border: "#E5E7EB",
   softBorder: "#EEF2FF",
   strongBorder: "#CBD5E1",
-
+  divider: "#EEF2F7",
   primary: "#4F46E5",
   primaryPressed: "#4338CA",
   primarySoft: "#EEF2FF",
@@ -73,6 +73,7 @@ export const lightColors = {
   inputBackground: "#FFFFFF",
   inputBorder: "#E5E7EB",
   inputPlaceholder: "#9CA3AF",
+  inputFocusedBorder: "#4F46E5",
 
   glassBackground: "rgba(255, 255, 255, 0.72)",
   glassBorder: "rgba(17, 17, 17, 0.08)",
@@ -80,6 +81,11 @@ export const lightColors = {
 
   tabPillBackground: "rgba(79, 70, 229, 0.14)",
   tabPillBorder: "rgba(79, 70, 229, 0.18)",
+  skeletonBase: "#EEF2FF",
+  skeletonHighlight: "#FFFFFF",
+
+  disabledBackground: "#E5E7EB",
+  disabledText: "#9CA3AF",
 
   overlay: "rgba(17, 24, 39, 0.45)",
   shadow: "rgba(15, 23, 42, 0.10)",
@@ -100,6 +106,7 @@ export const darkColors = {
   border: "#27272A",
   softBorder: "#1F1F23",
   strongBorder: "#3F3F46",
+  divider: "#1F1F23",
 
   primary: "#818CF8",
   primaryPressed: "#6366F1",
@@ -160,6 +167,7 @@ export const darkColors = {
   inputBackground: "#18181B",
   inputBorder: "#27272A",
   inputPlaceholder: "#71717A",
+  inputFocusedBorder: "#818CF8",
 
   glassBackground: "rgba(21, 22, 24, 0.72)",
   glassBorder: "rgba(255, 255, 255, 0.12)",
@@ -167,6 +175,11 @@ export const darkColors = {
 
   tabPillBackground: "rgba(129, 140, 248, 0.22)",
   tabPillBorder: "rgba(129, 140, 248, 0.24)",
+  skeletonBase: "#18181B",
+  skeletonHighlight: "#27272A",
+
+  disabledBackground: "#27272A",
+  disabledText: "#71717A",
 
   overlay: "rgba(0, 0, 0, 0.55)",
   shadow: "rgba(0, 0, 0, 0.35)",
