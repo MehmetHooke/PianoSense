@@ -1,11 +1,11 @@
 import React from 'react'
 import { Text, View } from 'react-native'
 
-export default function library() {
+export default function insights() {
    {
     return (
       <View>
-        <Text>library</Text>
+        <Text>insights</Text>
       </View>
     )
   }

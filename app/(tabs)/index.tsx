@@ -1,5 +1,6 @@
 // app/(tabs)/index.tsx
 
+import { useAppAlert } from "@/src/hooks/useAppAlert";
 import { getActiveSongs } from "@/src/services/songService";
 import type { Song, SongLevel } from "@/src/types/song";
 import { Ionicons } from "@expo/vector-icons";
@@ -60,7 +61,7 @@ function formatDuration(durationSec?: number) {
 
 export default function SongListScreen() {
   const router = useRouter();
-
+  const { showAlert } = useAppAlert();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,6 +71,12 @@ export default function SongListScreen() {
       if (!silent) {
         setLoading(true);
       }
+
+      showAlert({
+        type: "info",
+        title: "Bilgi",
+        message: "Şarkılar başarıyla yüklendi",
+      });
 
       const activeSongs = await getActiveSongs();
       setSongs(activeSongs);
@@ -93,6 +100,7 @@ export default function SongListScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+
     await loadSongs(true);
   };
 
