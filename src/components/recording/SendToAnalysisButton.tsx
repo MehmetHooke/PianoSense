@@ -44,7 +44,7 @@ export function SendToAnalysisButton({
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => ({
-        backgroundColor: colors.accentSoft,
+        backgroundColor: colors.primary,
         borderRadius: 20,
         paddingVertical: 17,
         alignItems: "center",

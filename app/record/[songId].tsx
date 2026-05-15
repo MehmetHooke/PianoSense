@@ -42,7 +42,7 @@ export default function RecordingScreen() {
 
 function RecordingScreenContent() {
     const { user } = useAuth();
-    const { colors } = useAppTheme();
+    const { colors,theme } = useAppTheme();
     const recorderPreparedRef = useRef(false);
     const router = useRouter();
     const { songId } = useLocalSearchParams<{ songId: string }>();
@@ -551,7 +551,7 @@ function RecordingScreenContent() {
             <RecordingHeader
                 title={song?.title ?? "Egzersiz"}
                 description={song?.description}
-                bpm={bpm}
+                isDark={theme === "dark" ? true: false}
                 onBackPress={handleBackPress}
                 colors={colors}
             />

@@ -17,135 +17,136 @@ export function OriginalAudioCard({
   onPress,
   colors,
 }: Props) {
+  const isDisabled = disabled || isLoading;
+
   return (
-    <View
-      style={{
-        backgroundColor: colors.card,
-        borderRadius: 28,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: colors.border,
-        marginBottom: 16,
-        shadowColor: colors.shadow,
-        shadowOpacity: 1,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 10 },
-        elevation: 2,
-      }}
+    <Pressable
+      onPress={onPress}
+      disabled={isDisabled}
+      style={({ pressed }) => ({
+        marginBottom: 14,
+        opacity: disabled ? 0.55 : pressed ? 0.88 : 1,
+      })}
     >
       <View
         style={{
+          minHeight: 74,
+          borderRadius: 24,
+          backgroundColor: colors.card,
+          borderWidth: 1,
+          borderColor: isPlaying ? colors.primary : colors.border,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
           flexDirection: "row",
           alignItems: "center",
-          gap: 14,
-          marginBottom: 18,
+          gap: 12,
+
+          shadowColor: colors.shadow,
+          shadowOpacity: 0.08,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: 2,
         }}
       >
+        {/* Play / Pause button */}
         <View
           style={{
-            width: 52,
-            height: 52,
+            width: 48,
+            height: 48,
             borderRadius: 18,
-            backgroundColor: colors.primarySoft,
+            backgroundColor: isPlaying ? colors.pianoBlack : colors.primary,
             alignItems: "center",
             justifyContent: "center",
-            borderWidth: 1,
-            borderColor: colors.softBorder,
           }}
         >
-          <Ionicons name="play" size={24} color={colors.primary} />
+          {isLoading ? (
+            <ActivityIndicator size="small" color={colors.primaryForeground} />
+          ) : (
+            <Ionicons
+              name={isPlaying ? "pause" : "play"}
+              size={22}
+              color={colors.primaryForeground}
+              style={{
+                marginLeft: isPlaying ? 0 : 2,
+              }}
+            />
+          )}
         </View>
 
+        {/* Text area */}
         <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 3,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              style={{
+                color: colors.text,
+                fontSize: 15,
+                fontWeight: "900",
+              }}
+            >
+              Orijinal parçayı dinle
+            </Text>
+
+            {isPlaying && (
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 999,
+                  backgroundColor: colors.success,
+                }}
+              />
+            )}
+          </View>
+
+          <Text
+            numberOfLines={1}
+            style={{
+              color: colors.mutedText,
+              fontSize: 12,
+              fontWeight: "600",
+            }}
+          >
+            {isPlaying
+              ? "Parça çalıyor, hazır olduğunda durdurabilirsin."
+              : "Melodiyi ve giriş zamanını hatırla."}
+          </Text>
+        </View>
+
+        {/* Right badge */}
+        <View
+          style={{
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 999,
+            backgroundColor: colors.primarySoft,
+            borderWidth: 1,
+            borderColor: colors.softBorder,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <Ionicons name="musical-note" size={13} color={colors.primary} />
+
           <Text
             style={{
-              color: colors.text,
-              fontSize: 18,
+              color: colors.primary,
+              fontSize: 11,
               fontWeight: "900",
             }}
           >
-            1. Orijinal parçayı dinle
-          </Text>
-
-          <Text
-            style={{
-              color: colors.mutedText,
-              marginTop: 4,
-              lineHeight: 20,
-              fontSize: 14,
-            }}
-          >
-            Melodiyi, ritmi ve giriş zamanını aklında tut.
+            Original
           </Text>
         </View>
       </View>
-
-      <Pressable
-        onPress={onPress}
-        disabled={disabled || isLoading}
-        style={({ pressed }) => ({
-          backgroundColor: isPlaying ? colors.pianoBlack : colors.primary,
-          borderRadius: 18,
-          paddingVertical: 15,
-          alignItems: "center",
-          opacity: disabled || isLoading ? 0.5 : pressed ? 0.85 : 1,
-          flexDirection: "row",
-          justifyContent: "center",
-          gap: 8,
-        })}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={colors.primaryForeground} />
-        ) : (
-          <Ionicons
-            name={isPlaying ? "pause" : "play"}
-            size={20}
-            color={colors.primaryForeground}
-          />
-        )}
-
-        <Text
-          style={{
-            color: colors.primaryForeground,
-            fontWeight: "900",
-            fontSize: 15,
-          }}
-        >
-          {isPlaying ? "Durdur" : "Orijinali Oynat"}
-        </Text>
-      </Pressable>
-
-      <View
-        style={{
-          marginTop: 12,
-          padding: 12,
-          borderRadius: 16,
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.softBorder,
-          flexDirection: "row",
-          gap: 8,
-        }}
-      >
-        <Ionicons
-          name="information-circle"
-          size={17}
-          color={colors.subtleText}
-          style={{ marginTop: 1 }}
-        />
-
-        <Text
-          style={{
-            color: colors.subtleText,
-            fontSize: 12,
-            lineHeight: 18,
-            flex: 1,
-          }}
-        >
-          İpucu: Kayda başlamadan önce parçayı en az bir kez dinle. Kayıt
-          sırasında orijinal parça kapalı olacak.
-        </Text>
-      </View>
-    </View>
+    </Pressable>
   );
 }

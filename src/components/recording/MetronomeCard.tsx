@@ -19,7 +19,7 @@ function getTitle(phase: RecordingPhase) {
     if (phase === "countIn") return "Hazırlan";
     if (phase === "recording") return "Şimdi çal";
     if (phase === "recorded") return "Kayıt tamamlandı";
-    return "2. Metronomla hazırlan";
+    return "Hazırlık";
 }
 
 function getDescription({
@@ -114,8 +114,8 @@ export function MetronomeCard({
             >
                 <View
                     style={{
-                        width: 88,
-                        height: 88,
+                        width: 55,
+                        height: 55,
                         borderRadius: 30,
                         backgroundColor: iconBackgroundColor,
                         alignItems: "center",
@@ -125,7 +125,7 @@ export function MetronomeCard({
                         marginBottom: 16,
                     }}
                 >
-                    <Ionicons name={getIconName(phase)} size={42} color={iconColor} />
+                    <Ionicons name={getIconName(phase)} size={30} color={iconColor} />
                 </View>
 
                 <Text
@@ -222,6 +222,7 @@ export function MetronomeCard({
 
                 <View
                     style={{
+                        
                         height: 72,
                         borderRadius: 20,
                         backgroundColor: colors.card,
@@ -280,9 +281,10 @@ export function MetronomeCard({
                         </>
                     ) : isRecorded ? (
                         <>
+                        
                             <Ionicons
                                 name="checkmark-circle"
-                                size={28}
+                                size={25}
                                 color={colors.success}
                             />
 
@@ -301,7 +303,7 @@ export function MetronomeCard({
                         <>
                             <Ionicons
                                 name="musical-note"
-                                size={28}
+                                size={25}
                                 color={colors.primary}
                             />
 
