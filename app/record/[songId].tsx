@@ -1,13 +1,22 @@
 // app/record/[songId].tsx
 
 import { AuthGate } from "@/src/components/auth/AuthGate";
+import {
+    MetronomeCard,
+    type RecordingPhase,
+} from "@/src/components/recording/MetronomeCard";
+import { OriginalAudioCard } from "@/src/components/recording/OriginalAudioCard";
+import { RecordingHeader } from "@/src/components/recording/RecordingHeader";
+import { RecordingReadyCard } from "@/src/components/recording/RecordingReadyCard";
+
+import { SendToAnalysisButton } from "@/src/components/recording/SendToAnalysisButton";
 import { useAuth } from "@/src/context/AuthContext";
 import { createAnalysisJob } from "@/src/services/analysisJobService";
 import { uploadRecordingAudio } from "@/src/services/audioUploadService";
 import { getSongById } from "@/src/services/songService";
 import { getStorageFileUrl } from "@/src/services/storageService";
+import { useAppTheme } from "@/src/theme/useTheme";
 import type { Song } from "@/src/types/song";
-import { Ionicons } from "@expo/vector-icons";
 import {
     AudioModule,
     RecordingPresets,
@@ -18,15 +27,10 @@ import {
     useAudioRecorderState,
 } from "expo-audio";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
-} from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+
+const metronomeTickSource = require("@/src/assets/sound/metronome-tick.wav");
 
 export default function RecordingScreen() {
     return (
@@ -38,7 +42,8 @@ export default function RecordingScreen() {
 
 function RecordingScreenContent() {
     const { user } = useAuth();
-    const [submitting, setSubmitting] = useState(false);
+    const { colors } = useAppTheme();
+    const recorderPreparedRef = useRef(false);
     const router = useRouter();
     const { songId } = useLocalSearchParams<{ songId: string }>();
 
@@ -51,9 +56,20 @@ function RecordingScreenContent() {
     const [originalLoading, setOriginalLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [recordedUri, setRecordedUri] = useState<string | null>(null);
+
+    const [recordingPhase, setRecordingPhase] =
+        useState<RecordingPhase>("idle");
+    const [currentBeat, setCurrentBeat] = useState(1);
+
+    const [submitting, setSubmitting] = useState(false);
     const [submitStep, setSubmitStep] = useState<
         "idle" | "uploading" | "creatingJob"
     >("idle");
+
+    const countInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const visualMetronomeTimerRef =
+        useRef<ReturnType<typeof setInterval> | null>(null);
+    const countInActiveRef = useRef(false);
 
     const originalSource = useMemo(() => {
         if (!originalUrl) return null;
@@ -62,6 +78,104 @@ function RecordingScreenContent() {
 
     const originalPlayer = useAudioPlayer(originalSource);
     const originalStatus = useAudioPlayerStatus(originalPlayer);
+
+    const tickPlayer = useAudioPlayer(metronomeTickSource);
+
+    const bpm = song?.bpm ?? 80;
+    const beatsBeforeRecording = song?.beatsBeforeRecording ?? 4;
+    const beatDurationMs = 60000 / bpm;
+
+    const durationSeconds = Math.floor((recorderState.durationMillis ?? 0) / 1000);
+
+    function clearCountInTimer() {
+        if (countInTimerRef.current) {
+            clearTimeout(countInTimerRef.current);
+            countInTimerRef.current = null;
+        }
+    }
+
+    function clearVisualMetronomeTimer() {
+        if (visualMetronomeTimerRef.current) {
+            clearInterval(visualMetronomeTimerRef.current);
+            visualMetronomeTimerRef.current = null;
+        }
+    }
+
+    function clearMetronomeTimers() {
+        clearCountInTimer();
+        clearVisualMetronomeTimer();
+    }
+
+    function playTick() {
+        try {
+            tickPlayer.seekTo(0);
+            tickPlayer.play();
+        } catch (error) {
+            console.log("Metronome tick error:", error);
+        }
+    }
+
+    function startSilentVisualMetronome() {
+        clearVisualMetronomeTimer();
+
+        setCurrentBeat(1);
+
+        visualMetronomeTimerRef.current = setInterval(() => {
+            setCurrentBeat((previousBeat) => {
+                if (previousBeat >= beatsBeforeRecording) {
+                    return 1;
+                }
+
+                return previousBeat + 1;
+            });
+        }, beatDurationMs);
+    }
+
+    async function beginRecordingAfterCountIn() {
+        try {
+            if (!countInActiveRef.current) return;
+
+            countInActiveRef.current = false;
+            clearCountInTimer();
+
+
+            audioRecorder.record();
+            recorderPreparedRef.current = false;
+
+            setRecordingPhase("recording");
+            startSilentVisualMetronome();
+
+            console.log("Recording started after count-in");
+        } catch (error) {
+            console.log("Begin recording after count-in error:", error);
+
+            countInActiveRef.current = false;
+            clearMetronomeTimers();
+            setRecordingPhase("idle");
+            setCurrentBeat(1);
+
+            Alert.alert("Hata", "Kayıt başlatılamadı.");
+        }
+    }
+
+    function runCountInBeat(beat: number) {
+        if (!countInActiveRef.current) return;
+
+        setCurrentBeat(beat);
+        playTick();
+
+        if (beat >= beatsBeforeRecording) {
+            countInTimerRef.current = setTimeout(() => {
+                beginRecordingAfterCountIn();
+            }, beatDurationMs);
+
+            return;
+        }
+
+        countInTimerRef.current = setTimeout(() => {
+            runCountInBeat(beat + 1);
+        }, beatDurationMs);
+    }
 
     useEffect(() => {
         const configureAudio = async () => {
@@ -107,10 +221,12 @@ function RecordingScreenContent() {
 
                 if (!permission.granted) {
                     setPermissionGranted(false);
+
                     Alert.alert(
                         "Mikrofon izni gerekli",
                         "Kayıt alabilmek için mikrofon izni vermelisin."
                     );
+
                     return;
                 }
 
@@ -119,9 +235,13 @@ function RecordingScreenContent() {
                 await setAudioModeAsync({
                     playsInSilentMode: true,
                     allowsRecording: true,
+                    shouldRouteThroughEarpiece: false,
+                    shouldPlayInBackground: false,
+                    interruptionMode: "doNotMix",
                 });
             } catch (error) {
                 console.log("Recording screen prepare error:", error);
+
                 Alert.alert("Hata", "Kayıt ekranı hazırlanırken bir sorun oluştu.");
             } finally {
                 setOriginalLoading(false);
@@ -132,6 +252,20 @@ function RecordingScreenContent() {
         prepare();
     }, [router, songId]);
 
+    useEffect(() => {
+        return () => {
+            countInActiveRef.current = false;
+            clearMetronomeTimers();
+
+            try {
+                originalPlayer.pause();
+                tickPlayer.pause();
+            } catch {
+                // Ignore cleanup audio errors.
+            }
+        };
+    }, [originalPlayer, tickPlayer]);
+
     const playOriginal = async () => {
         try {
             if (!originalUrl) {
@@ -139,10 +273,10 @@ function RecordingScreenContent() {
                 return;
             }
 
-            if (recorderState.isRecording) {
+            if (recordingPhase === "countIn" || recordingPhase === "recording") {
                 Alert.alert(
-                    "Kayıt devam ediyor",
-                    "Orijinal melodiyi dinlemek için önce kaydı durdur."
+                    "Kayıt hazırlanıyor",
+                    "Orijinal melodiyi dinlemek için önce kayıt akışını durdurmalısın."
                 );
                 return;
             }
@@ -171,42 +305,159 @@ function RecordingScreenContent() {
         }
     };
 
-    const startRecording = async () => {
+    const startCountInAndRecording = async () => {
         try {
-            setRecordedUri(null);
+            if (!permissionGranted) {
+                Alert.alert(
+                    "Mikrofon izni gerekli",
+                    "Kayıt alabilmek için mikrofon izni vermelisin."
+                );
+                return;
+            }
+
+            if (submitting) return;
 
             if (originalStatus.playing) {
                 originalPlayer.pause();
             }
 
-            await audioRecorder.prepareToRecordAsync();
-            audioRecorder.record();
+            countInActiveRef.current = false;
+            clearMetronomeTimers();
 
-            console.log("Recording started");
+            setRecordedUri(null);
+            setCurrentBeat(1);
+            setRecordingPhase("countIn");
+
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: true,
+                shouldRouteThroughEarpiece: false,
+                shouldPlayInBackground: false,
+                interruptionMode: "doNotMix",
+            });
+
+            await audioRecorder.prepareToRecordAsync();
+            recorderPreparedRef.current = true;
+
+            countInActiveRef.current = true;
+            runCountInBeat(1);
         } catch (error) {
-            console.log("Start recording error:", error);
-            Alert.alert("Hata", "Kayıt başlatılamadı.");
+            console.log("Start count-in recording error:", error);
+
+            countInActiveRef.current = false;
+            clearMetronomeTimers();
+            setRecordingPhase("idle");
+            setCurrentBeat(1);
+
+            Alert.alert("Hata", "Kayıt hazırlığı başlatılamadı.");
+        }
+    };
+
+    const cancelCountIn = async () => {
+        try {
+            countInActiveRef.current = false;
+            clearMetronomeTimers();
+
+            try {
+                tickPlayer.pause();
+                tickPlayer.seekTo(0);
+            } catch {
+                // Tick player cleanup error can be ignored.
+            }
+
+            if (recorderPreparedRef.current) {
+                try {
+                    await audioRecorder.stop();
+                    recorderPreparedRef.current = false;
+                } catch (error) {
+                    console.log("Cancel count-in recorder stop ignored:", error);
+                    recorderPreparedRef.current = true;
+                }
+            }
+
+            setRecordedUri(null);
+            setCurrentBeat(1);
+            setRecordingPhase("idle");
+
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: false,
+                shouldRouteThroughEarpiece: false,
+                shouldPlayInBackground: false,
+                interruptionMode: "doNotMix",
+            });
+        } catch (error) {
+            console.log("Cancel count-in error:", error);
         }
     };
 
     const stopRecording = async () => {
         try {
+            clearVisualMetronomeTimer();
+
             await audioRecorder.stop();
+            recorderPreparedRef.current = false;
 
             const uri = audioRecorder.uri;
 
             console.log("Recording stopped. URI:", uri);
 
             if (!uri) {
+                setRecordingPhase("idle");
+
                 Alert.alert("Hata", "Kayıt dosyası oluşturulamadı.");
                 return;
             }
 
             setRecordedUri(uri);
+            setRecordingPhase("recorded");
+            setCurrentBeat(1);
+
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: false,
+                shouldRouteThroughEarpiece: false,
+                shouldPlayInBackground: false,
+                interruptionMode: "doNotMix",
+            });
         } catch (error) {
             console.log("Stop recording error:", error);
             Alert.alert("Hata", "Kayıt durdurulamadı.");
         }
+    };
+
+    const handleMetronomePrimaryPress = () => {
+        if (recordingPhase === "countIn") {
+            cancelCountIn();
+            return;
+        }
+
+        if (recordingPhase === "recording") {
+            stopRecording();
+            return;
+        }
+
+        startCountInAndRecording();
+    };
+
+    const handleBackPress = () => {
+        if (recordingPhase === "countIn") {
+            Alert.alert(
+                "Hazırlık devam ediyor",
+                "Geri dönmeden önce hazırlığı iptal etmelisin."
+            );
+            return;
+        }
+
+        if (recordingPhase === "recording") {
+            Alert.alert(
+                "Kayıt devam ediyor",
+                "Geri dönmeden önce kaydı durdurmalısın."
+            );
+            return;
+        }
+
+        router.back();
     };
 
     const handleSendToAnalysis = async () => {
@@ -254,6 +505,7 @@ function RecordingScreenContent() {
             });
         } catch (error) {
             console.log("Send to analysis error:", error);
+
             Alert.alert(
                 "Analiz başlatılamadı",
                 "Kayıt analize gönderilirken bir sorun oluştu. Lütfen tekrar dene."
@@ -269,14 +521,15 @@ function RecordingScreenContent() {
             <View
                 style={{
                     flex: 1,
-                    backgroundColor: "#F8F7FF",
+                    backgroundColor: colors.background,
                     alignItems: "center",
                     justifyContent: "center",
                     padding: 24,
                 }}
             >
-                <ActivityIndicator size="large" color="#4F46E5" />
-                <Text style={{ marginTop: 12, color: "#6B7280" }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+
+                <Text style={{ marginTop: 12, color: colors.mutedText }}>
                     Çalışma ekranı hazırlanıyor...
                 </Text>
             </View>
@@ -287,7 +540,7 @@ function RecordingScreenContent() {
         <ScrollView
             style={{
                 flex: 1,
-                backgroundColor: "#F8F7FF",
+                backgroundColor: colors.background,
             }}
             contentContainerStyle={{
                 paddingHorizontal: 20,
@@ -295,313 +548,52 @@ function RecordingScreenContent() {
                 paddingBottom: 36,
             }}
         >
-            <Pressable
-                onPress={() => {
-                    if (recorderState.isRecording) {
-                        Alert.alert(
-                            "Kayıt devam ediyor",
-                            "Geri dönmeden önce kaydı durdurmalısın."
-                        );
-                        return;
-                    }
+            <RecordingHeader
+                title={song?.title ?? "Egzersiz"}
+                description={song?.description}
+                bpm={bpm}
+                onBackPress={handleBackPress}
+                colors={colors}
+            />
 
-                    router.back();
-                }} style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 16,
-                    backgroundColor: "#FFFFFF",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 24,
-                    borderWidth: 1,
-                    borderColor: "#E5E7EB",
-                }}
-            >
-                <Ionicons name="chevron-back" size={24} color="#111827" />
-            </Pressable>
+            <OriginalAudioCard
+                isPlaying={originalStatus.playing}
+                isLoading={originalLoading}
+                disabled={
+                    !originalUrl ||
+                    submitting ||
+                    recordingPhase === "countIn" ||
+                    recordingPhase === "recording"
+                }
+                onPress={originalStatus.playing ? pauseOriginal : playOriginal}
+                colors={colors}
+            />
 
-            <View style={{ marginBottom: 22 }}>
-                <Text
-                    style={{
-                        fontSize: 13,
-                        fontWeight: "800",
-                        color: "#4F46E5",
-                        marginBottom: 8,
-                    }}
-                >
-                    ÇALIŞMA AKIŞI
-                </Text>
+            <MetronomeCard
+                bpm={bpm}
+                beatsBeforeRecording={beatsBeforeRecording}
+                currentBeat={currentBeat}
+                phase={recordingPhase}
+                disabled={!permissionGranted || submitting}
+                durationSeconds={durationSeconds}
+                onPrimaryPress={handleMetronomePrimaryPress}
+                colors={colors}
+            />
 
-                <Text
-                    style={{
-                        fontSize: 30,
-                        fontWeight: "900",
-                        color: "#111827",
-                        marginBottom: 8,
-                    }}
-                >
-                    {song?.title}
-                </Text>
+            {recordedUri ? <RecordingReadyCard colors={colors} /> : null}
 
-                <Text
-                    style={{
-                        fontSize: 15,
-                        color: "#6B7280",
-                        lineHeight: 22,
-                    }}
-                >
-                    Önce orijinal melodiyi dinle. Sonra aynı melodiyi piyanoda çalıp
-                    kaydet.
-                </Text>
-            </View>
-
-            <View
-                style={{
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 28,
-                    padding: 20,
-                    borderWidth: 1,
-                    borderColor: "#E5E7EB",
-                    marginBottom: 16,
-                }}
-            >
-                <View
-                    style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 14,
-                        marginBottom: 18,
-                    }}
-                >
-                    <View
-                        style={{
-                            width: 50,
-                            height: 50,
-                            borderRadius: 18,
-                            backgroundColor: "#EEF2FF",
-                            alignItems: "center",
-                            justifyContent: "center",
-                        }}
-                    >
-                        <Ionicons name="play" size={24} color="#4F46E5" />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                        <Text
-                            style={{
-                                color: "#111827",
-                                fontSize: 18,
-                                fontWeight: "900",
-                            }}
-                        >
-                            Orijinali parça
-                        </Text>
-
-                        <Text
-                            style={{
-                                color: "#6B7280",
-                                marginTop: 4,
-                                lineHeight: 20,
-                            }}
-                        >
-                            Melodiyi duy, ritmi ve notaları aklında tut.
-                        </Text>
-                    </View>
-                </View>
-
-                <Pressable
-                    onPress={originalStatus.playing ? pauseOriginal : playOriginal}
-                    disabled={originalLoading || !originalUrl || submitting}
-                    style={{
-                        backgroundColor: originalStatus.playing ? "#111827" : "#4F46E5",
-                        borderRadius: 18,
-                        paddingVertical: 15,
-                        alignItems: "center",
-                        opacity: originalLoading || !originalUrl || submitting ? 0.5 : 1,
-                        flexDirection: "row",
-                        justifyContent: "center",
-                        gap: 8,
-                    }}
-                >
-                    {originalLoading ? (
-                        <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                        <Ionicons
-                            name={originalStatus.playing ? "pause" : "play"}
-                            size={20}
-                            color="#FFFFFF"
-                        />
-                    )}
-
-                    <Text
-                        style={{
-                            color: "#FFFFFF",
-                            fontWeight: "900",
-                            fontSize: 15,
-                        }}
-                    >
-                        {originalStatus.playing ? "Durdur" : "Orijinali Oynat"}
-                    </Text>
-                </Pressable>
-                <Text
-                    style={{
-                        color: "#9CA3AF",
-                        fontSize: 12,
-                        marginTop: 12,
-                        lineHeight: 18,
-                    }}
-                >
-                    İpucu: Melodiyi bir kez dinleyip ritmini aklında tut. Kayda başlamadan önce ortamın sessiz olduğundan emin ol.
-                </Text>
-
-            </View>
-
-            <View
-                style={{
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 28,
-                    padding: 20,
-                    borderWidth: 1,
-                    borderColor: "#E5E7EB",
-                    marginBottom: 16,
-                }}
-            >
-                <View
-                    style={{
-                        width: 82,
-                        height: 82,
-                        borderRadius: 28,
-                        backgroundColor: recorderState.isRecording ? "#FEE2E2" : "#EEF2FF",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        alignSelf: "center",
-                        marginBottom: 18,
-                    }}
-                >
-                    <Ionicons
-                        name={recorderState.isRecording ? "radio-button-on" : "mic"}
-                        size={42}
-                        color={recorderState.isRecording ? "#EF4444" : "#4F46E5"}
-                    />
-                </View>
-
-                <Text
-                    style={{
-                        textAlign: "center",
-                        fontSize: 18,
-                        fontWeight: "900",
-                        color: "#111827",
-                        marginBottom: 6,
-                    }}
-                >
-                    2. Şimdi sen çal
-                </Text>
-
-                <Text
-                    style={{
-                        textAlign: "center",
-                        color: "#6B7280",
-                        marginBottom: 20,
-                    }}
-                >
-                    Süre: {Math.floor((recorderState.durationMillis ?? 0) / 1000)} sn
-                </Text>
-
-                <Pressable
-                    onPress={recorderState.isRecording ? stopRecording : startRecording}
-                    disabled={!permissionGranted || submitting}
-                    style={{
-                        backgroundColor: recorderState.isRecording ? "#EF4444" : "#4F46E5",
-                        borderRadius: 18,
-                        paddingVertical: 16,
-                        alignItems: "center",
-                        opacity: permissionGranted && !submitting ? 1 : 0.5,
-                    }}
-                >
-                    <Text
-                        style={{
-                            color: "#FFFFFF",
-                            fontWeight: "900",
-                            fontSize: 16,
-                        }}
-                    >
-                        {recorderState.isRecording ? "Kaydı Durdur" : "Kaydı Başlat"}
-                    </Text>
-                </Pressable>
-            </View>
-
-            {recordedUri ? (
-                <View
-                    style={{
-                        backgroundColor: "#ECFDF5",
-                        borderRadius: 22,
-                        padding: 16,
-                        borderWidth: 1,
-                        borderColor: "#BBF7D0",
-                        marginBottom: 16,
-                    }}
-                >
-                    <Text
-                        style={{
-                            color: "#166534",
-                            fontWeight: "900",
-                            marginBottom: 6,
-                        }}
-                    >
-                        Kayıt hazır
-                    </Text>
-
-                    <Text
-                        style={{
-                            color: "#166534",
-                            lineHeight: 20,
-                            fontSize: 13,
-                        }}
-                    >
-                        Kaydın hazır. Şimdi analize göndererek orijinal melodiyle karşılaştırabilirsin.
-                    </Text>
-                </View>
-            ) : null}
-
-
-            <Pressable
+            <SendToAnalysisButton
+                disabled={
+                    !recordedUri ||
+                    recordingPhase === "countIn" ||
+                    recordingPhase === "recording" ||
+                    submitting
+                }
+                submitting={submitting}
+                submitStep={submitStep}
                 onPress={handleSendToAnalysis}
-                disabled={!recordedUri || recorderState.isRecording || submitting}
-                style={{
-                    backgroundColor: "#111827",
-                    borderRadius: 20,
-                    paddingVertical: 17,
-                    alignItems: "center",
-                    opacity:
-                        recordedUri && !recorderState.isRecording && !submitting ? 1 : 0.45,
-                }}
-            >
-                <View
-                    style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                    }}
-                >
-                    {submitting ? <ActivityIndicator color="#FFFFFF" /> : null}
-
-                    <Text
-                        style={{
-                            color: "#FFFFFF",
-                            fontWeight: "900",
-                            fontSize: 16,
-                        }}
-                    >
-                        {submitting
-                            ? submitStep === "uploading"
-                                ? "Kayıt yükleniyor..."
-                                : "Analiz başlatılıyor..."
-                            : "Analize Gönder"}
-                    </Text>
-                </View>
-            </Pressable>
+                colors={colors}
+            />
         </ScrollView>
     );
 }
