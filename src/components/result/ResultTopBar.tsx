@@ -7,9 +7,14 @@ import { Pressable, Text, View } from "react-native";
 type Props = {
   colors: AppColors;
   onBackPress: () => void;
+  label?: string;
 };
 
-export function ResultTopBar({ colors, onBackPress }: Props) {
+export function ResultTopBar({
+  colors,
+  onBackPress,
+  label = "ANALİZ SONUCU",
+}: Props) {
   return (
     <View
       style={{
@@ -55,11 +60,10 @@ export function ResultTopBar({ colors, onBackPress }: Props) {
             color: colors.primary,
             fontSize: 12,
             fontWeight: "900",
-
             letterSpacing: 0.6,
           }}
         >
-          ANALİZ SONUCU
+          {label}
         </Text>
       </View>
     </View>

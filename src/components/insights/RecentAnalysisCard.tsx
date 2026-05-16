@@ -27,6 +27,15 @@ function formatDate(job: AnalysisJob) {
   }).format(date);
 }
 
+function getJobTitle(job: AnalysisJob) {
+  if (job.songTitle?.trim()) {
+    return job.songTitle.trim();
+  }
+
+
+  return "Analiz sonucu";
+}
+
 function getScoreLabel(score: number) {
   if (score >= 85) return "Çok iyi";
   if (score >= 65) return "İyi";
@@ -104,7 +113,7 @@ export function RecentAnalysisCard({ job, index, onPress }: Props) {
             }}
             numberOfLines={1}
           >
-            Analiz sonucu
+            {getJobTitle(job)}
           </Text>
 
           <Text
