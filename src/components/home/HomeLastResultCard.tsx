@@ -12,12 +12,14 @@ type LastResult = {
 
 type Props = {
   result: LastResult | null;
+  loading?: boolean;
   onOpenResult: (jobId: string) => void;
   onStartPractice: () => void;
 };
 
 export function HomeLastResultCard({
   result,
+  loading = false,
   onOpenResult,
   onStartPractice,
 }: Props) {
