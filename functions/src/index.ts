@@ -92,12 +92,17 @@ export const createAnalysisJob = onCall<CreateAnalysisJobPayload>(
     }
 
     const originalAudioPath = songData.originalAudioPath as string;
+    const songTitle =
+      typeof songData.title === "string" && songData.title.trim().length > 0
+        ? songData.title.trim()
+        : "Piyano egzersizi";
 
     const jobRef = db.collection("analysisJobs").doc();
 
     await jobRef.set({
       userId: uid,
       songId,
+      songTitle,
       recordingId,
       originalAudioPath,
       recordedAudioPath,

@@ -64,6 +64,8 @@ export type AnalysisJob = {
   songId: string;
   recordingId: string;
 
+  songTitle?: string;
+
   originalAudioPath: string;
   recordedAudioPath: string;
 
