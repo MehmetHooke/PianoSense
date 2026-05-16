@@ -1,14 +1,15 @@
 // app/processing/[jobId].tsx
 
 import { AuthGate } from "@/src/components/auth/AuthGate";
-import {
-  listenAnalysisJob,
-} from "@/src/services/analysisJobService";
+import { ResultProcessingSkeleton } from "@/src/components/result/ResultProcessingSkeleton";
+import { ResultStateView } from "@/src/components/result/ResultStateView";
+import { listenAnalysisJob } from "@/src/services/analysisJobService";
+import { useAppTheme } from "@/src/theme/useTheme";
 import type { AnalysisJob } from "@/src/types/analysisJob";
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const MIN_PROCESSING_SCREEN_MS = 1400;
 
 export default function ProcessingScreen() {
   return (
@@ -20,12 +21,68 @@ export default function ProcessingScreen() {
 
 function ProcessingScreenContent() {
   const router = useRouter();
-  const { jobId } = useLocalSearchParams<{ jobId: string }>();
+  const { colors } = useAppTheme();
+  const params = useLocalSearchParams<{ jobId: string }>();
+
+  const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
 
   const [job, setJob] = useState<AnalysisJob | null>(null);
+  const [screenError, setScreenError] = useState<string | null>(null);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
+  const [minDelayPassed, setMinDelayPassed] = useState(false);
+
+  const completedJobIdRef = useRef<string | null>(null);
+  const hasNavigatedRef = useRef(false);
+
+  const navigateToResult = useCallback(
+    (targetJobId: string) => {
+      if (hasNavigatedRef.current) return;
+
+      hasNavigatedRef.current = true;
+
+      router.replace({
+        pathname: "/result/[jobId]",
+        params: { jobId: targetJobId },
+      });
+    },
+    [router]
+  );
+
+  function goHome() {
+    router.replace("/(tabs)");
+  }
+
+  function goBack() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    goHome();
+  }
 
   useEffect(() => {
-    if (!jobId) return;
+    const timer = setTimeout(() => {
+      setMinDelayPassed(true);
+    }, MIN_PROCESSING_SCREEN_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!minDelayPassed) return;
+    if (!completedJobIdRef.current) return;
+
+    navigateToResult(completedJobIdRef.current);
+  }, [minDelayPassed, navigateToResult]);
+
+  useEffect(() => {
+    if (!jobId) {
+      setScreenError("Analiz işi bilgisi bulunamadı.");
+      return;
+    }
 
     const unsubscribe = listenAnalysisJob(
       jobId,
@@ -33,98 +90,66 @@ function ProcessingScreenContent() {
         setJob(updatedJob);
 
         if (!updatedJob) {
-          Alert.alert("Hata", "Analiz işi bulunamadı.");
-          router.replace("/(tabs)");
+          setScreenError("Analiz işi bulunamadı.");
           return;
         }
 
         if (updatedJob.status === "completed") {
-          router.replace({
-            pathname: "/result/[jobId]",
-            params: { jobId },
-          });
+          completedJobIdRef.current = jobId;
+
+          if (minDelayPassed) {
+            navigateToResult(jobId);
+          }
+
+          return;
         }
 
         if (updatedJob.status === "failed") {
-          Alert.alert(
-            "Analiz başarısız",
-            updatedJob.errorMessage ?? "Analiz sırasında bir sorun oluştu."
+          setFailedMessage(
+            updatedJob.errorMessage ??
+            "Analiz sırasında bir sorun oluştu. Daha sessiz bir ortamda tekrar kayıt almayı deneyebilirsin."
           );
-          router.replace("/(tabs)");
         }
       },
       () => {
-        Alert.alert("Hata", "Analiz durumu dinlenirken bir sorun oluştu.");
-        router.replace("/(tabs)");
+        setScreenError("Analiz durumu dinlenirken bir sorun oluştu.");
       }
     );
 
     return unsubscribe;
-  }, [jobId, router]);
+  }, [jobId, minDelayPassed, navigateToResult]);
+
+  if (screenError) {
+    return (
+      <ResultStateView
+        colors={colors}
+        type="error"
+        title="Analiz bulunamadı"
+        description={screenError}
+        actionLabel="Ana sayfaya dön"
+        onActionPress={goHome}
+      />
+    );
+  }
+
+  if (failedMessage) {
+    return (
+      <ResultStateView
+        colors={colors}
+        type="error"
+        title="Analiz başarısız oldu"
+        description={failedMessage}
+        actionLabel="Geri dön"
+        onActionPress={goBack}
+      />
+    );
+  }
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#F8F7FF",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <View
-        style={{
-          width: 96,
-          height: 96,
-          borderRadius: 32,
-          backgroundColor: "#FFFFFF",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 24,
-          borderWidth: 1,
-          borderColor: "#E5E7EB",
-        }}
-      >
-        <Ionicons name="analytics" size={44} color="#4F46E5" />
-      </View>
-
-      <Text
-        style={{
-          fontSize: 28,
-          fontWeight: "900",
-          color: "#111827",
-          textAlign: "center",
-          marginBottom: 8,
-        }}
-      >
-        Performans analiz ediliyor
-      </Text>
-
-      <Text
-        style={{
-          fontSize: 15,
-          color: "#6B7280",
-          textAlign: "center",
-          lineHeight: 22,
-          marginBottom: 24,
-        }}
-      >
-        Kaydın yüklendi. Şimdi orijinal melodi ile karşılaştırma sonucu
-        hazırlanıyor.
-      </Text>
-
-      <ActivityIndicator size="large" color="#4F46E5" />
-
-      <Text
-        style={{
-          marginTop: 18,
-          color: "#9CA3AF",
-          fontSize: 13,
-          textAlign: "center",
-        }}
-      >
-        Job status: {job?.status ?? "loading"}
-      </Text>
-    </View>
+    <ResultProcessingSkeleton
+      colors={colors}
+      onBackPress={goBack}
+      status={job?.status}
+    />
   );
 }
