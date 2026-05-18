@@ -18,10 +18,11 @@ export function ResultTopBar({
   return (
     <View
       style={{
+        position: "relative",
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
         marginBottom: 24,
+        minHeight: 44,
       }}
     >
       <Pressable
@@ -40,31 +41,47 @@ export function ResultTopBar({
           shadowRadius: 14,
           shadowOffset: { width: 0, height: 8 },
           elevation: 1,
+          zIndex: 2,
         })}
       >
         <Ionicons name="chevron-back" size={22} color={colors.text} />
       </Pressable>
 
       <View
+        pointerEvents="none"
         style={{
-          backgroundColor: colors.primarySoft,
-          borderRadius: 999,
-          paddingVertical: 8,
-          paddingHorizontal: 12,
-          borderWidth: 1,
-          borderColor: colors.softBorder,
+          position: "absolute",
+          left: 0,
+          right: 0,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 58,
         }}
       >
-        <Text
+        <View
           style={{
-            color: colors.primary,
-            fontSize: 12,
-            fontWeight: "900",
-            letterSpacing: 0.6,
+            maxWidth: "100%",
+            backgroundColor: colors.primarySoft,
+            borderRadius: 999,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderWidth: 1,
+            borderColor: colors.softBorder,
           }}
         >
-          {label}
-        </Text>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              color: colors.primary,
+              fontSize: 16,
+              fontWeight: "900",
+              letterSpacing: 1,
+            }}
+          >
+            {label}
+          </Text>
+        </View>
       </View>
     </View>
   );

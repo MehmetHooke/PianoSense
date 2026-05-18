@@ -66,8 +66,7 @@ export function AppInfoCard() {
               marginTop: 6,
             }}
           >
-            Kısa piyano egzersizlerini analiz ederek nota doğruluğunu ve
-            zamanlama performansını takip etmene yardımcı olur.
+            44 parça eklendi ses analizi başarısı yüksek düşük ses tonlu C4 ve B4 notalarını yakalamsı için kayıt cihazını ses cihazına yakın tutulması gerekiyor.
           </Text>
 
           <View
@@ -93,7 +92,7 @@ export function AppInfoCard() {
                   fontWeight: "900",
                 }}
               >
-                MVP
+                MVP Tamamlandı
               </Text>
             </View>
 

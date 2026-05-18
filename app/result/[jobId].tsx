@@ -9,8 +9,10 @@ import { ResultScoreBreakdown } from "@/src/components/result/ResultScoreBreakdo
 import { ResultStateView } from "@/src/components/result/ResultStateView";
 import { ResultTopBar } from "@/src/components/result/ResultTopBar";
 import { getAnalysisJobById } from "@/src/services/analysisJobService";
+import { getSongById } from "@/src/services/songService";
 import { useAppTheme } from "@/src/theme/useTheme";
 import type { AnalysisJob } from "@/src/types/analysisJob";
+import type { Song } from "@/src/types/song";
 import { getMainFeedback } from "@/src/utils/resultUtils";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -30,6 +32,7 @@ function ResultScreenContent() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
 
   const [job, setJob] = useState<AnalysisJob | null>(null);
+  const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
@@ -47,10 +50,12 @@ function ResultScreenContent() {
 
     async function loadResult() {
       try {
+        setLoading(true);
         setLoadError(false);
 
         if (!jobId) {
           setJob(null);
+          setSong(null);
           return;
         }
 
@@ -59,6 +64,16 @@ function ResultScreenContent() {
         if (!mounted) return;
 
         setJob(foundJob);
+
+        if (foundJob?.songId) {
+          const foundSong = await getSongById(foundJob.songId);
+
+          if (!mounted) return;
+
+          setSong(foundSong);
+        } else {
+          setSong(null);
+        }
       } catch (error) {
         console.log("Load result error:", error);
 
@@ -119,7 +134,8 @@ function ResultScreenContent() {
         onActionPress={goBack}
       />
     );
-  }
+  } 
+  
 
   const result = job.result;
   const items = result.items ?? [];
@@ -139,7 +155,11 @@ function ResultScreenContent() {
       keyExtractor={(_, index) => `${job.id}-${index}`}
       ListHeaderComponent={
         <View>
-          <ResultTopBar colors={colors} onBackPress={goBack} />
+          <ResultTopBar
+            colors={colors}
+            onBackPress={goBack}
+            label={song?.title ?? "ANALİZ SONUCU"}
+          />
 
           <ResultHeroCard job={job} colors={colors} feedback={feedback} />
 

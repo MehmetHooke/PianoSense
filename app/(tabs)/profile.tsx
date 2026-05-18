@@ -1,6 +1,7 @@
 import { AppInfoCard } from "@/src/components/settings/AppInfoCard";
 import { ProfileSummaryCard } from "@/src/components/settings/ProfileSummaryCard";
 import { SettingsSectionAccordion } from "@/src/components/settings/SettingsSectionAccordion";
+import { StudentCodeCard } from "@/src/components/settings/StudentCodeCard";
 import { ThemeSettingsCard } from "@/src/components/settings/ThemeSettingsCard";
 import { auth } from "@/src/services/firebase";
 import { useAppTheme } from "@/src/theme/useTheme";
@@ -8,7 +9,7 @@ import { alpha } from "@/src/utils/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,8 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const themeImage = require("@/src/assets/images/profile/solar-eclipse.png");
 
-type ExpandedSetting = "theme" | null;
-
+type ExpandedSetting = "studentCode" | "theme" | null;
 const settingsLayoutTransition = LinearTransition.springify()
   .damping(45)
   .stiffness(200);
@@ -39,6 +39,11 @@ export default function ProfileScreen() {
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   const user = auth.currentUser;
+
+  const mockStudentCode = useMemo(
+    () => generateMockStudentCode(user?.uid),
+    [user?.uid],
+  );
 
   const toggleSetting = (setting: Exclude<ExpandedSetting, null>) => {
     setExpandedSetting((prev) => (prev === setting ? null : setting));
@@ -60,6 +65,32 @@ export default function ProfileScreen() {
       setLogoutLoading(false);
     }
   };
+
+
+  function generateMockStudentCode(seed?: string | null) {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    if (!seed) {
+      return Array.from({ length: 6 }, () =>
+        chars[Math.floor(Math.random() * chars.length)],
+      ).join("");
+    }
+
+    let hash = 0;
+
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+    }
+
+    let code = "";
+
+    for (let i = 0; i < 6; i += 1) {
+      code += chars[hash % chars.length];
+      hash = Math.floor(hash / chars.length) || hash + i + 17;
+    }
+
+    return code;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -85,7 +116,7 @@ export default function ProfileScreen() {
               color: colors.text,
               fontSize: 30,
               fontWeight: "900",
-              letterSpacing: -0.8,
+              letterSpacing: 1.8,
             }}
           >
             Profil
@@ -110,6 +141,20 @@ export default function ProfileScreen() {
             email={user?.email}
           />
         </Animated.View>
+
+        <SettingsSectionAccordion
+          title="Öğrenci Kodu"
+          description="Veli ve öğretmen bağlantıları için kullanılacak kısa takip kodunu görüntüle."
+          iconName="id-card-outline"
+          iconColor={colors.primary}
+          iconBackgroundColor={colors.primarySoft}
+          iconBorderColor={alpha(colors.primary, 0.18)}
+          expanded={expandedSetting === "studentCode"}
+          onPress={() => toggleSetting("studentCode")}
+          colors={colors}
+        >
+          <StudentCodeCard studentCode={mockStudentCode} />
+        </SettingsSectionAccordion>
 
         <SettingsSectionAccordion
           title="Tema"
