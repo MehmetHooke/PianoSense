@@ -67,7 +67,7 @@ export type AnalysisJob = {
   songTitle?: string;
 
   originalAudioPath: string;
-  recordedAudioPath: string;
+  recordedAudioPath?: string | null;
 
   status: AnalysisJobStatus;
 
