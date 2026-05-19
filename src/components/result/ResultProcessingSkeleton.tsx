@@ -5,11 +5,11 @@ import type { AppColors } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import {
-    Animated,
-    ScrollView,
-    Text,
-    View,
-    type ViewStyle,
+  Animated,
+  ScrollView,
+  Text,
+  View,
+  type ViewStyle,
 } from "react-native";
 
 type Props = {
@@ -17,6 +17,16 @@ type Props = {
   onBackPress: () => void;
   status?: string;
 };
+
+function getProcessingStatusLabel(status?: string) {
+  if (status === "uploading") return "Kayıt yükleniyor";
+  if (status === "queued") return "Analiz sıraya alındı";
+  if (status === "processing") return "Notalar karşılaştırılıyor";
+  if (status === "completed") return "Sonuç hazırlanıyor";
+  if (status === "failed") return "Analiz başarısız oldu";
+
+  return "Hazırlanıyor";
+}
 
 function SkeletonBlock({
   colors,
@@ -313,7 +323,7 @@ export function ResultProcessingSkeleton({
             textAlign: "center",
           }}
         >
-          Durum: {status ?? "hazırlanıyor"}
+          Durum: {getProcessingStatusLabel(status)}
         </Text>
       </View>
 
