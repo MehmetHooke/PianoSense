@@ -1,10 +1,15 @@
+// src/components/settings/ProfileSummaryCard.tsx
+
 import { useAppTheme } from "@/src/theme/useTheme";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import type { ImageSourcePropType } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 
 type Props = {
   displayName?: string | null;
   email?: string | null;
+  profileImageSource?: ImageSourcePropType;
+  onAvatarPress?: () => void;
 };
 
 function getInitial(displayName?: string | null, email?: string | null) {
@@ -12,7 +17,12 @@ function getInitial(displayName?: string | null, email?: string | null) {
   return source.charAt(0).toUpperCase();
 }
 
-export function ProfileSummaryCard({ displayName, email }: Props) {
+export function ProfileSummaryCard({
+  displayName,
+  email,
+  profileImageSource,
+  onAvatarPress,
+}: Props) {
   const { colors } = useAppTheme();
 
   const shownName = displayName?.trim() || "PianoSense Kullanıcısı";
@@ -40,26 +50,66 @@ export function ProfileSummaryCard({ displayName, email }: Props) {
           gap: 14,
         }}
       >
-        <View
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 23,
-            backgroundColor: colors.primary,
+        <Pressable
+          onPress={onAvatarPress}
+          disabled={!onAvatarPress}
+          style={({ pressed }) => ({
+            width: 68,
+            height: 68,
+            borderRadius: 24,
+            backgroundColor: colors.primarySoft,
             alignItems: "center",
             justifyContent: "center",
-          }}
+            overflow: "hidden",
+            borderWidth: 2,
+            borderColor: colors.softBorder,
+            opacity: pressed ? 0.86 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
         >
-          <Text
+          {profileImageSource ? (
+            <Image
+              source={profileImageSource}
+              resizeMode="cover"
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          ) : (
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: 26,
+                fontWeight: "900",
+              }}
+            >
+              {getInitial(displayName, email)}
+            </Text>
+          )}
+
+          <View
             style={{
-              color: colors.primaryForeground,
-              fontSize: 26,
-              fontWeight: "900",
+              position: "absolute",
+              right: 3,
+              bottom: 3,
+              width: 24,
+              height: 24,
+              borderRadius: 999,
+              backgroundColor: colors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 2,
+              borderColor: colors.card,
             }}
           >
-            {getInitial(displayName, email)}
-          </Text>
-        </View>
+            <Ionicons
+              name="camera-outline"
+              size={13}
+              color={colors.primaryForeground}
+            />
+          </View>
+        </Pressable>
 
         <View style={{ flex: 1 }}>
           <Text
