@@ -21,7 +21,7 @@ export default function ProcessingScreen() {
 
 function ProcessingScreenContent() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, theme } = useAppTheme();
   const params = useLocalSearchParams<{ jobId: string }>();
 
   const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
@@ -148,8 +148,8 @@ function ProcessingScreenContent() {
   return (
     <ResultProcessingSkeleton
       colors={colors}
-      onBackPress={goBack}
       status={job?.status}
+      isDark={theme === "dark"}
     />
   );
 }

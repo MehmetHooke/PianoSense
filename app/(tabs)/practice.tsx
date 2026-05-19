@@ -40,7 +40,6 @@ export default function PracticeScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { showAlert } = useAppAlert();
-
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

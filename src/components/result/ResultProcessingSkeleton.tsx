@@ -1,9 +1,9 @@
 // src/components/result/ResultProcessingSkeleton.tsx
 
-import { ResultTopBar } from "@/src/components/result/ResultTopBar";
 import type { AppColors } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef } from "react";
+import { Image } from "expo-image";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   ScrollView,
@@ -12,20 +12,65 @@ import {
   type ViewStyle,
 } from "react-native";
 
+const insightLightImage = require("@/src/assets/images/insights/insights-light.png");
+const insightDarkImage = require("@/src/assets/images/insights/insights-dark.png");
+
 type Props = {
   colors: AppColors;
-  onBackPress: () => void;
   status?: string;
+  isDark: boolean;
 };
 
-function getProcessingStatusLabel(status?: string) {
-  if (status === "uploading") return "Kayıt yükleniyor";
-  if (status === "queued") return "Analiz sıraya alındı";
-  if (status === "processing") return "Notalar karşılaştırılıyor";
-  if (status === "completed") return "Sonuç hazırlanıyor";
-  if (status === "failed") return "Analiz başarısız oldu";
+type ProcessingStep = {
+  key: string;
+  title: string;
+  description: string;
+  progress: number;
+};
 
-  return "Hazırlanıyor";
+function getProcessingStep(status?: string): ProcessingStep {
+  if (status === "uploading") {
+    return {
+      key: "uploading",
+      title: "Kaydın yükleniyor",
+      description: "Performans kaydın güvenli şekilde hazırlanıyor.",
+      progress: 24,
+    };
+  }
+
+  if (status === "queued") {
+    return {
+      key: "queued",
+      title: "Analiz sıraya alındı",
+      description: "Kaydın analiz sistemi tarafından işlenmek üzere bekliyor.",
+      progress: 46,
+    };
+  }
+
+  if (status === "processing") {
+    return {
+      key: "processing",
+      title: "Notalar karşılaştırılıyor",
+      description: "Orijinal melodi ile performansındaki nota ve zamanlama farkları inceleniyor.",
+      progress: 78,
+    };
+  }
+
+  if (status === "completed") {
+    return {
+      key: "completed",
+      title: "Sonuç hazırlanıyor",
+      description: "Analiz tamamlandı. Sonuç ekranı açılıyor.",
+      progress: 100,
+    };
+  }
+
+  return {
+    key: "preparing",
+    title: "Analiz hazırlanıyor",
+    description: "Performans sonucunu oluşturmak için ilk adımlar hazırlanıyor.",
+    progress: 12,
+  };
 }
 
 function SkeletonBlock({
@@ -34,28 +79,46 @@ function SkeletonBlock({
   height,
   borderRadius = 14,
   style,
+  delay = 0,
 }: {
   colors: AppColors;
   width?: ViewStyle["width"];
   height: number;
   borderRadius?: number;
   style?: ViewStyle;
+  delay?: number;
 }) {
-  const opacity = useRef(new Animated.Value(0.45)).current;
+  const opacity = useRef(new Animated.Value(0.22)).current;
+  const scale = useRef(new Animated.Value(0.98)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 760,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.45,
-          duration: 760,
-          useNativeDriver: true,
-        }),
+        Animated.delay(delay),
+        Animated.parallel([
+          Animated.timing(opacity, {
+            toValue: 0.95,
+            duration: 620,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scale, {
+            toValue: 1,
+            duration: 620,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(opacity, {
+            toValue: 0.22,
+            duration: 780,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scale, {
+            toValue: 0.98,
+            duration: 780,
+            useNativeDriver: true,
+          }),
+        ]),
       ])
     );
 
@@ -64,7 +127,7 @@ function SkeletonBlock({
     return () => {
       animation.stop();
     };
-  }, [opacity]);
+  }, [delay, opacity, scale]);
 
   return (
     <Animated.View
@@ -75,6 +138,7 @@ function SkeletonBlock({
           borderRadius,
           backgroundColor: colors.elevatedCard,
           opacity,
+          transform: [{ scale }],
         },
         style,
       ]}
@@ -82,7 +146,13 @@ function SkeletonBlock({
   );
 }
 
-function MetricSkeletonCard({ colors }: { colors: AppColors }) {
+function MetricSkeletonCard({
+  colors,
+  delay,
+}: {
+  colors: AppColors;
+  delay: number;
+}) {
   return (
     <View
       style={{
@@ -96,13 +166,20 @@ function MetricSkeletonCard({ colors }: { colors: AppColors }) {
         borderColor: colors.border,
       }}
     >
-      <SkeletonBlock colors={colors} width={28} height={5} borderRadius={999} />
+      <SkeletonBlock
+        colors={colors}
+        width={28}
+        height={5}
+        borderRadius={999}
+        delay={delay}
+      />
 
       <SkeletonBlock
         colors={colors}
         width="62%"
         height={12}
         borderRadius={999}
+        delay={delay + 90}
         style={{ marginTop: 12 }}
       />
 
@@ -111,13 +188,20 @@ function MetricSkeletonCard({ colors }: { colors: AppColors }) {
         width="42%"
         height={26}
         borderRadius={10}
+        delay={delay + 160}
         style={{ marginTop: 9 }}
       />
     </View>
   );
 }
 
-function NoteSkeletonItem({ colors }: { colors: AppColors }) {
+function NoteSkeletonItem({
+  colors,
+  delay,
+}: {
+  colors: AppColors;
+  delay: number;
+}) {
   return (
     <View
       style={{
@@ -132,34 +216,58 @@ function NoteSkeletonItem({ colors }: { colors: AppColors }) {
         gap: 12,
       }}
     >
-      <SkeletonBlock colors={colors} width={38} height={38} borderRadius={14} />
+      <SkeletonBlock
+        colors={colors}
+        width={38}
+        height={38}
+        borderRadius={14}
+        delay={delay}
+      />
 
       <View style={{ flex: 1 }}>
-        <SkeletonBlock colors={colors} width="72%" height={16} />
+        <SkeletonBlock
+          colors={colors}
+          width="72%"
+          height={16}
+          delay={delay + 80}
+        />
+
         <SkeletonBlock
           colors={colors}
           width="92%"
           height={12}
+          delay={delay + 150}
           style={{ marginTop: 9 }}
         />
+
         <SkeletonBlock
           colors={colors}
           width="56%"
           height={11}
+          delay={delay + 220}
           style={{ marginTop: 8 }}
         />
       </View>
 
-      <SkeletonBlock colors={colors} width={64} height={28} borderRadius={999} />
+      <SkeletonBlock
+        colors={colors}
+        width={64}
+        height={28}
+        borderRadius={999}
+        delay={delay + 120}
+      />
     </View>
   );
 }
 
 export function ResultProcessingSkeleton({
   colors,
-  onBackPress,
   status,
+  isDark,
 }: Props) {
+  const step = useMemo(() => getProcessingStep(status), [status]);
+  const imageSource = isDark ? insightDarkImage : insightLightImage;
+
   return (
     <ScrollView
       style={{
@@ -168,17 +276,11 @@ export function ResultProcessingSkeleton({
       }}
       contentContainerStyle={{
         paddingHorizontal: 20,
-        paddingTop: 60,
+        paddingTop: 64,
         paddingBottom: 36,
       }}
       showsVerticalScrollIndicator={false}
     >
-      <ResultTopBar
-        colors={colors}
-        onBackPress={onBackPress}
-        label="ANALİZ EDİLİYOR"
-      />
-
       <View style={{ marginBottom: 16 }}>
         <Text
           style={{
@@ -228,13 +330,19 @@ export function ResultProcessingSkeleton({
             }}
           >
             <View style={{ flex: 1 }}>
-              <SkeletonBlock colors={colors} width="42%" height={13} />
+              <SkeletonBlock
+                colors={colors}
+                width="42%"
+                height={13}
+                delay={0}
+              />
 
               <SkeletonBlock
                 colors={colors}
                 width={108}
                 height={58}
                 borderRadius={18}
+                delay={110}
                 style={{ marginTop: 10 }}
               />
 
@@ -243,23 +351,31 @@ export function ResultProcessingSkeleton({
                 width="58%"
                 height={18}
                 borderRadius={999}
+                delay={220}
                 style={{ marginTop: 10 }}
               />
             </View>
 
             <View
               style={{
-                width: 124,
-                height: 124,
-                borderRadius: 999,
-                backgroundColor: colors.primarySoft,
+                width: 132,
+                height: 132,
+                borderRadius: 34,
+                
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 1,
-                borderColor: colors.softBorder,
+                overflow: "hidden",
               }}
             >
-              <Ionicons name="analytics" size={42} color={colors.primary} />
+              <Image
+                source={imageSource}
+                contentFit="contain"
+                transition={180}
+                style={{
+                  width: 132,
+                  height: 132,
+                }}
+              />
             </View>
           </View>
 
@@ -271,60 +387,86 @@ export function ResultProcessingSkeleton({
               padding: 14,
               borderWidth: 1,
               borderColor: colors.softBorder,
-              flexDirection: "row",
               gap: 12,
-              alignItems: "center",
             }}
           >
             <View
               style={{
-                width: 42,
-                height: 42,
-                borderRadius: 16,
-                backgroundColor: colors.primarySoft,
+                flexDirection: "row",
+                gap: 12,
                 alignItems: "center",
-                justifyContent: "center",
               }}
             >
-              <Ionicons name="musical-notes" size={21} color={colors.primary} />
-            </View>
+              <View
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 16,
+                  backgroundColor: colors.primarySoft,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons
+                  name="musical-notes"
+                  size={21}
+                  color={colors.primary}
+                />
+              </View>
 
-            <View style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontSize: 14,
+                    fontWeight: "900",
+                  }}
+                >
+                  {step.title}
+                </Text>
+
+                <Text
+                  style={{
+                    color: colors.mutedText,
+                    fontSize: 12,
+                    lineHeight: 18,
+                    marginTop: 2,
+                  }}
+                >
+                  {step.description}
+                </Text>
+              </View>
+
               <Text
                 style={{
-                  color: colors.text,
-                  fontSize: 14,
+                  color: colors.primary,
+                  fontSize: 12,
                   fontWeight: "900",
                 }}
               >
-                Analiz devam ediyor
+                %{step.progress}
               </Text>
+            </View>
 
-              <Text
+            <View
+              style={{
+                height: 9,
+                borderRadius: 999,
+                backgroundColor: colors.progressTrack,
+                overflow: "hidden",
+              }}
+            >
+              <View
                 style={{
-                  color: colors.mutedText,
-                  fontSize: 12,
-                  lineHeight: 18,
-                  marginTop: 2,
+                  width: `${step.progress}%`,
+                  height: "100%",
+                  borderRadius: 999,
+                  backgroundColor: colors.primary,
                 }}
-              >
-                Sonuç hazır olduğunda otomatik olarak gösterilecek.
-              </Text>
+              />
             </View>
           </View>
         </View>
-
-        <Text
-          style={{
-            marginTop: 10,
-            color: colors.subtleText,
-            fontSize: 12,
-            fontWeight: "700",
-            textAlign: "center",
-          }}
-        >
-          Durum: {getProcessingStatusLabel(status)}
-        </Text>
       </View>
 
       <View
@@ -344,18 +486,22 @@ export function ResultProcessingSkeleton({
             borderColor: colors.border,
           }}
         >
-          <SkeletonBlock colors={colors} width="70%" height={12} />
+          <SkeletonBlock colors={colors} width="70%" height={12} delay={80} />
+
           <SkeletonBlock
             colors={colors}
             width="48%"
             height={26}
+            delay={180}
             style={{ marginTop: 12 }}
           />
+
           <SkeletonBlock
             colors={colors}
             width="100%"
             height={7}
             borderRadius={999}
+            delay={280}
             style={{ marginTop: 14 }}
           />
         </View>
@@ -370,18 +516,22 @@ export function ResultProcessingSkeleton({
             borderColor: colors.border,
           }}
         >
-          <SkeletonBlock colors={colors} width="62%" height={12} />
+          <SkeletonBlock colors={colors} width="62%" height={12} delay={180} />
+
           <SkeletonBlock
             colors={colors}
             width="45%"
             height={26}
+            delay={280}
             style={{ marginTop: 12 }}
           />
+
           <SkeletonBlock
             colors={colors}
             width="100%"
             height={7}
             borderRadius={999}
+            delay={380}
             style={{ marginTop: 14 }}
           />
         </View>
@@ -395,12 +545,12 @@ export function ResultProcessingSkeleton({
           marginBottom: 22,
         }}
       >
-        <MetricSkeletonCard colors={colors} />
-        <MetricSkeletonCard colors={colors} />
-        <MetricSkeletonCard colors={colors} />
-        <MetricSkeletonCard colors={colors} />
-        <MetricSkeletonCard colors={colors} />
-        <MetricSkeletonCard colors={colors} />
+        <MetricSkeletonCard colors={colors} delay={0} />
+        <MetricSkeletonCard colors={colors} delay={120} />
+        <MetricSkeletonCard colors={colors} delay={240} />
+        <MetricSkeletonCard colors={colors} delay={360} />
+        <MetricSkeletonCard colors={colors} delay={480} />
+        <MetricSkeletonCard colors={colors} delay={600} />
       </View>
 
       <View
@@ -447,10 +597,10 @@ export function ResultProcessingSkeleton({
         </Text>
       </View>
 
-      <NoteSkeletonItem colors={colors} />
-      <NoteSkeletonItem colors={colors} />
-      <NoteSkeletonItem colors={colors} />
-      <NoteSkeletonItem colors={colors} />
+      <NoteSkeletonItem colors={colors} delay={120} />
+      <NoteSkeletonItem colors={colors} delay={260} />
+      <NoteSkeletonItem colors={colors} delay={400} />
+      <NoteSkeletonItem colors={colors} delay={540} />
     </ScrollView>
   );
 }
