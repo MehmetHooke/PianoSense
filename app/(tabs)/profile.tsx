@@ -1,15 +1,28 @@
+// app/(tabs)/profile.tsx
+
 import { AppInfoCard } from "@/src/components/settings/AppInfoCard";
+import { ProfileImagePickerModal } from "@/src/components/settings/ProfileImagePickerModal";
 import { ProfileSummaryCard } from "@/src/components/settings/ProfileSummaryCard";
 import { SettingsSectionAccordion } from "@/src/components/settings/SettingsSectionAccordion";
 import { StudentCodeCard } from "@/src/components/settings/StudentCodeCard";
 import { ThemeSettingsCard } from "@/src/components/settings/ThemeSettingsCard";
+import {
+  DEFAULT_PROFILE_IMAGE_ID,
+  getProfileImageSource,
+} from "@/src/constants/profileImages";
+import { useAuth } from "@/src/context/AuthContext";
 import { auth } from "@/src/services/firebase";
+import {
+  listenUserProfile,
+  updateUserProfileImage,
+} from "@/src/services/userProfileService";
 import { useAppTheme } from "@/src/theme/useTheme";
+import type { ProfileImageId, UserProfile } from "@/src/types/userProfile";
 import { alpha } from "@/src/utils/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,7 +30,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text
+  Text,
 } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +38,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const themeImage = require("@/src/assets/images/profile/solar-eclipse.png");
 
 type ExpandedSetting = "studentCode" | "theme" | null;
+
 const settingsLayoutTransition = LinearTransition.springify()
   .damping(45)
   .stiffness(200);
@@ -33,20 +47,76 @@ export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
+  const { user } = useAuth();
 
   const [expandedSetting, setExpandedSetting] =
     useState<ExpandedSetting>("theme");
+
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profilePickerVisible, setProfilePickerVisible] = useState(false);
+  const [profileImageSaving, setProfileImageSaving] = useState(false);
 
-  const user = auth.currentUser;
+  useEffect(() => {
+    if (!user?.uid) {
+      setProfile(null);
+      return;
+    }
 
-  const mockStudentCode = useMemo(
-    () => generateMockStudentCode(user?.uid),
-    [user?.uid],
+    const unsubscribe = listenUserProfile(
+      user.uid,
+      setProfile,
+      (error) => {
+        console.log("USER PROFILE LISTEN ERROR:", error);
+      },
+    );
+
+    return unsubscribe;
+  }, [user?.uid]);
+
+  const selectedProfileImageId =
+    profile?.profileImageId ?? DEFAULT_PROFILE_IMAGE_ID;
+
+  const selectedProfileImageSource = useMemo(
+    () => getProfileImageSource(selectedProfileImageId),
+    [selectedProfileImageId],
   );
+
+  const shownStudentCode = profile?.studentCode ?? "------";
 
   const toggleSetting = (setting: Exclude<ExpandedSetting, null>) => {
     setExpandedSetting((prev) => (prev === setting ? null : setting));
+  };
+
+  const handleSelectProfileImage = async (profileImageId: ProfileImageId) => {
+    if (!user?.uid) {
+      return;
+    }
+
+    if (profileImageId === selectedProfileImageId) {
+      setProfilePickerVisible(false);
+      return;
+    }
+
+    try {
+      setProfileImageSaving(true);
+
+      await updateUserProfileImage({
+        uid: user.uid,
+        profileImageId,
+      });
+
+      setProfilePickerVisible(false);
+    } catch (error) {
+      console.log("UPDATE PROFILE IMAGE ERROR:", error);
+
+      Alert.alert(
+        "Profil resmi değiştirilemedi",
+        "Profil resmin kaydedilirken bir sorun oluştu. Lütfen tekrar dene.",
+      );
+    } finally {
+      setProfileImageSaving(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -65,32 +135,6 @@ export default function ProfileScreen() {
       setLogoutLoading(false);
     }
   };
-
-
-  function generateMockStudentCode(seed?: string | null) {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-    if (!seed) {
-      return Array.from({ length: 6 }, () =>
-        chars[Math.floor(Math.random() * chars.length)],
-      ).join("");
-    }
-
-    let hash = 0;
-
-    for (let i = 0; i < seed.length; i += 1) {
-      hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-    }
-
-    let code = "";
-
-    for (let i = 0; i < 6; i += 1) {
-      code += chars[hash % chars.length];
-      hash = Math.floor(hash / chars.length) || hash + i + 17;
-    }
-
-    return code;
-  }
 
   return (
     <KeyboardAvoidingView
@@ -137,8 +181,10 @@ export default function ProfileScreen() {
 
         <Animated.View layout={settingsLayoutTransition}>
           <ProfileSummaryCard
-            displayName={user?.displayName}
-            email={user?.email}
+            displayName={profile?.displayName ?? user?.displayName}
+            email={profile?.email ?? user?.email}
+            profileImageSource={selectedProfileImageSource}
+            onAvatarPress={() => setProfilePickerVisible(true)}
           />
         </Animated.View>
 
@@ -153,7 +199,7 @@ export default function ProfileScreen() {
           onPress={() => toggleSetting("studentCode")}
           colors={colors}
         >
-          <StudentCodeCard studentCode={mockStudentCode} />
+          <StudentCodeCard studentCode={shownStudentCode} />
         </SettingsSectionAccordion>
 
         <SettingsSectionAccordion
@@ -219,6 +265,18 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+
+      <ProfileImagePickerModal
+        visible={profilePickerVisible}
+        selectedImageId={selectedProfileImageId}
+        saving={profileImageSaving}
+        onClose={() => {
+          if (!profileImageSaving) {
+            setProfilePickerVisible(false);
+          }
+        }}
+        onSelect={handleSelectProfileImage}
+      />
     </KeyboardAvoidingView>
   );
 }
