@@ -7,6 +7,7 @@ type UploadRecordingAudioParams = {
   userId: string;
   songId: string;
   localUri: string;
+  recordingId?: string;
 };
 
 type UploadRecordingAudioResult = {
@@ -19,8 +20,9 @@ export async function uploadRecordingAudio({
   userId,
   songId,
   localUri,
+  recordingId: providedRecordingId,
 }: UploadRecordingAudioParams): Promise<UploadRecordingAudioResult> {
-  const recordingId = `${Date.now()}`;
+  const recordingId = providedRecordingId ?? `${Date.now()}`;
 
   const response = await fetch(localUri);
   const blob = await response.blob();

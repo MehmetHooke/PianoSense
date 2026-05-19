@@ -15,37 +15,104 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
-type CreateAnalysisJobParams = {
+type CreatePendingAnalysisJobParams = {
   songId: string;
+};
+
+type CreatePendingAnalysisJobCallablePayload = {
+  songId: string;
+};
+
+type CreatePendingAnalysisJobCallableResponse = {
+  ok: boolean;
+  jobId: string;
+  recordingId: string;
+};
+
+type StartAnalysisJobParams = {
+  jobId: string;
   recordingId: string;
   recordedAudioPath: string;
 };
 
-type CreateAnalysisJobCallablePayload = {
-  songId: string;
+type StartAnalysisJobCallablePayload = {
+  jobId: string;
   recordingId: string;
   recordedAudioPath: string;
 };
 
-type CreateAnalysisJobCallableResponse = {
+type StartAnalysisJobCallableResponse = {
   ok: boolean;
   jobId: string;
 };
 
-export async function createAnalysisJob({
+type MarkAnalysisJobFailedParams = {
+  jobId: string;
+  errorCode: string;
+  errorMessage: string;
+};
+
+type MarkAnalysisJobFailedCallablePayload = MarkAnalysisJobFailedParams;
+
+type MarkAnalysisJobFailedCallableResponse = {
+  ok: boolean;
+  jobId: string;
+};
+
+export async function createPendingAnalysisJob({
   songId,
-  recordingId,
-  recordedAudioPath,
-}: CreateAnalysisJobParams): Promise<string> {
+}: CreatePendingAnalysisJobParams): Promise<{
+  jobId: string;
+  recordingId: string;
+}> {
   const callable = httpsCallable<
-    CreateAnalysisJobCallablePayload,
-    CreateAnalysisJobCallableResponse
-  >(functions, "createAnalysisJob");
+    CreatePendingAnalysisJobCallablePayload,
+    CreatePendingAnalysisJobCallableResponse
+  >(functions, "createPendingAnalysisJob");
 
   const response = await callable({
     songId,
+  });
+
+  return {
+    jobId: response.data.jobId,
+    recordingId: response.data.recordingId,
+  };
+}
+
+export async function startAnalysisJob({
+  jobId,
+  recordingId,
+  recordedAudioPath,
+}: StartAnalysisJobParams): Promise<string> {
+  const callable = httpsCallable<
+    StartAnalysisJobCallablePayload,
+    StartAnalysisJobCallableResponse
+  >(functions, "startAnalysisJob");
+
+  const response = await callable({
+    jobId,
     recordingId,
     recordedAudioPath,
+  });
+
+  return response.data.jobId;
+}
+
+export async function markAnalysisJobFailed({
+  jobId,
+  errorCode,
+  errorMessage,
+}: MarkAnalysisJobFailedParams): Promise<string> {
+  const callable = httpsCallable<
+    MarkAnalysisJobFailedCallablePayload,
+    MarkAnalysisJobFailedCallableResponse
+  >(functions, "markAnalysisJobFailed");
+
+  const response = await callable({
+    jobId,
+    errorCode,
+    errorMessage,
   });
 
   return response.data.jobId;
