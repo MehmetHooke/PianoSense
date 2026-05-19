@@ -1,3 +1,4 @@
+import { CloudTasksClient } from "@google-cloud/tasks";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { setGlobalOptions } from "firebase-functions/v2";
@@ -7,7 +8,7 @@ admin.initializeApp();
 
 setGlobalOptions({
   region: "us-central1",
-  timeoutSeconds: 500,
+  timeoutSeconds: 120,
   memory: "1GiB",
 });
 
@@ -27,18 +28,16 @@ type MarkAnalysisJobFailedPayload = {
   errorMessage: string;
 };
 
-type CloudRunAnalyzeResponse = {
-  ok: boolean;
-  source: string;
-  jobId: string;
-  userId: string;
-  songId: string;
-  result: unknown;
-};
+const tasksClient = new CloudTasksClient();
 
 const CLOUD_RUN_ANALYZE_URL = process.env.CLOUD_RUN_ANALYZE_URL;
 const STORAGE_BUCKET =
   process.env.STORAGE_BUCKET ?? "pianosense-64bc1.firebasestorage.app";
+
+const TASKS_PROJECT_ID = process.env.TASKS_PROJECT_ID ?? "pianosense-64bc1";
+const TASKS_LOCATION = process.env.TASKS_LOCATION ?? "europe-west1";
+const TASKS_QUEUE = process.env.TASKS_QUEUE ?? "analysis-jobs";
+const TASKS_SERVICE_ACCOUNT = process.env.TASKS_SERVICE_ACCOUNT;
 
 export const createPendingAnalysisJob = onCall<CreatePendingAnalysisJobPayload>(
   async (request) => {
@@ -129,6 +128,13 @@ export const startAnalysisJob = onCall<StartAnalysisJobPayload>(
       );
     }
 
+    if (!TASKS_SERVICE_ACCOUNT) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Cloud Tasks servis hesabı yapılandırılmamış.",
+      );
+    }
+
     const { jobId, recordingId, recordedAudioPath } = request.data;
 
     if (!jobId || !recordingId || !recordedAudioPath) {
@@ -177,85 +183,59 @@ export const startAnalysisJob = onCall<StartAnalysisJobPayload>(
 
     await jobRef.update({
       recordedAudioPath,
-      status: "processing",
-      startedAt: FieldValue.serverTimestamp(),
+      status: "queued",
       updatedAt: FieldValue.serverTimestamp(),
     });
 
+    const queuePath = tasksClient.queuePath(
+      TASKS_PROJECT_ID,
+      TASKS_LOCATION,
+      TASKS_QUEUE,
+    );
+
+    const taskPayload = {
+      jobId,
+      userId: uid,
+      songId,
+      originalAudioPath,
+      recordedAudioPath,
+      bucketName: STORAGE_BUCKET,
+      deleteRecordedAfterAnalysis: false,
+    };
+
     try {
-      const cloudRunResponse = await fetch(CLOUD_RUN_ANALYZE_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await tasksClient.createTask({
+        parent: queuePath,
+        task: {
+          httpRequest: {
+            httpMethod: "POST",
+            url: CLOUD_RUN_ANALYZE_URL,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: Buffer.from(JSON.stringify(taskPayload)).toString("base64"),
+            oidcToken: {
+              serviceAccountEmail: TASKS_SERVICE_ACCOUNT,
+            },
+          },
         },
-        body: JSON.stringify({
-          jobId: jobRef.id,
-          userId: uid,
-          songId,
-          originalAudioPath,
-          recordedAudioPath,
-          bucketName: STORAGE_BUCKET,
-          deleteRecordedAfterAnalysis: false,
-        }),
-      });
-
-      const responseText = await cloudRunResponse.text();
-
-      if (!cloudRunResponse.ok) {
-        await jobRef.update({
-          status: "failed",
-          errorCode: "CLOUD_RUN_ANALYZE_FAILED",
-          errorMessage: responseText,
-          updatedAt: FieldValue.serverTimestamp(),
-          failedAt: FieldValue.serverTimestamp(),
-        });
-
-        throw new HttpsError(
-          "internal",
-          "Ses analizi başarısız oldu.",
-          responseText,
-        );
-      }
-
-      const cloudRunData = JSON.parse(responseText) as CloudRunAnalyzeResponse;
-
-      if (!cloudRunData.ok || !cloudRunData.result) {
-        await jobRef.update({
-          status: "failed",
-          errorCode: "INVALID_ANALYZE_RESPONSE",
-          errorMessage: "Cloud Run geçersiz analiz sonucu döndürdü.",
-          updatedAt: FieldValue.serverTimestamp(),
-          failedAt: FieldValue.serverTimestamp(),
-        });
-
-        throw new HttpsError(
-          "internal",
-          "Cloud Run geçersiz analiz sonucu döndürdü.",
-        );
-      }
-
-      await jobRef.update({
-        status: "completed",
-        result: cloudRunData.result,
-        updatedAt: FieldValue.serverTimestamp(),
-        completedAt: FieldValue.serverTimestamp(),
       });
 
       return {
         ok: true,
-        jobId: jobRef.id,
+        jobId,
       };
     } catch (error) {
-      console.error("startAnalysisJob error:", error);
+      console.error("Cloud Tasks createTask error:", error);
 
       const message =
         error instanceof Error
           ? error.message
-          : "Bilinmeyen analiz hatası oluştu.";
+          : "Analiz görevi kuyruğa eklenemedi.";
 
       await jobRef.update({
         status: "failed",
-        errorCode: "ANALYSIS_JOB_FAILED",
+        errorCode: "CLOUD_TASK_CREATE_FAILED",
         errorMessage: message,
         updatedAt: FieldValue.serverTimestamp(),
         failedAt: FieldValue.serverTimestamp(),
@@ -263,7 +243,7 @@ export const startAnalysisJob = onCall<StartAnalysisJobPayload>(
 
       throw new HttpsError(
         "internal",
-        "Analiz başlatılırken bir sorun oluştu.",
+        "Analiz görevi kuyruğa eklenemedi.",
         message,
       );
     }
