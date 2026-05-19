@@ -11,8 +11,8 @@ import { RecordingReadyCard } from "@/src/components/recording/RecordingReadyCar
 
 import { SendToAnalysisButton } from "@/src/components/recording/SendToAnalysisButton";
 import { useAuth } from "@/src/context/AuthContext";
-import { createAnalysisJob } from "@/src/services/analysisJobService";
-import { uploadRecordingAudio } from "@/src/services/audioUploadService";
+import { useAppAlert } from "@/src/hooks/useAppAlert";
+import { submitRecordingForAnalysis } from "@/src/services/analysisSubmissionService";
 import { getSongById } from "@/src/services/songService";
 import { getStorageFileUrl } from "@/src/services/storageService";
 import { useAppTheme } from "@/src/theme/useTheme";
@@ -42,10 +42,12 @@ export default function RecordingScreen() {
 
 function RecordingScreenContent() {
     const { user } = useAuth();
-    const { colors,theme } = useAppTheme();
+    const { colors, theme } = useAppTheme();
     const recorderPreparedRef = useRef(false);
     const router = useRouter();
     const { songId } = useLocalSearchParams<{ songId: string }>();
+
+      const { showAlert } = useAppAlert();
 
     const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
     const recorderState = useAudioRecorderState(audioRecorder);
@@ -483,20 +485,12 @@ function RecordingScreenContent() {
             }
 
             setSubmitting(true);
-            setSubmitStep("uploading");
+            setSubmitStep("creatingJob");
 
-            const uploadResult = await uploadRecordingAudio({
+            const { jobId } = await submitRecordingForAnalysis({
                 userId: user.uid,
                 songId,
                 localUri: recordedUri,
-            });
-
-            setSubmitStep("creatingJob");
-
-            const jobId = await createAnalysisJob({
-                songId,
-                recordingId: uploadResult.recordingId,
-                recordedAudioPath: uploadResult.recordedAudioPath,
             });
 
             router.replace({
@@ -506,13 +500,15 @@ function RecordingScreenContent() {
         } catch (error) {
             console.log("Send to analysis error:", error);
 
-            Alert.alert(
-                "Analiz başlatılamadı",
-                "Kayıt analize gönderilirken bir sorun oluştu. Lütfen tekrar dene."
-            );
-        } finally {
             setSubmitting(false);
             setSubmitStep("idle");
+
+            showAlert({
+                type:"error",
+                title: "Analiz başlatılamadı",
+                message:"Analiz ekranı hazırlanırken bir sorun oluştu. Lütfen tekrar dene.",
+            });
+
         }
     };
 
@@ -551,7 +547,7 @@ function RecordingScreenContent() {
             <RecordingHeader
                 title={song?.title ?? "Egzersiz"}
                 description={song?.description}
-                isDark={theme === "dark" ? true: false}
+                isDark={theme === "dark" ? true : false}
                 onBackPress={handleBackPress}
                 colors={colors}
             />
