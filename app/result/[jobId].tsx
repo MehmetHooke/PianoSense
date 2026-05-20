@@ -14,9 +14,21 @@ import { useAppTheme } from "@/src/theme/useTheme";
 import type { AnalysisJob } from "@/src/types/analysisJob";
 import type { Song } from "@/src/types/song";
 import { getMainFeedback } from "@/src/utils/resultUtils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+} from "expo-audio";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Text, View } from "react-native";
+
+const goodResultSound = require("@/src/assets/sound/iyiSes_loud.mp3");
+const mediumResultSound = require("@/src/assets/sound/ortaSes_loud.mp3");
+const badResultSound = require("@/src/assets/sound/kotuSes_loud.mp3");
+
+const RESULT_SOUND_STORAGE_KEY_PREFIX = "pianosense:result-sound-played";
 
 export default function ResultScreen() {
   return (
@@ -36,6 +48,52 @@ function ResultScreenContent() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
+  const resultSoundAttemptedRef = useRef(false);
+
+  const feedback = useMemo(() => {
+    if (!job) return "";
+    return getMainFeedback(job);
+  }, [job]);
+
+  const resultSoundSource = useMemo(() => {
+    const overallScore = job?.result?.overallScore;
+
+    if (typeof overallScore !== "number") {
+      return null;
+    }
+
+    if (overallScore < 40) {
+      return badResultSound;
+    }
+
+    if (overallScore <= 60) {
+      return mediumResultSound;
+    }
+
+    return goodResultSound;
+  }, [job?.result?.overallScore]);
+
+  const resultSoundType = useMemo(() => {
+    const overallScore = job?.result?.overallScore;
+
+    if (typeof overallScore !== "number") {
+      return "none";
+    }
+
+    if (overallScore < 40) {
+      return "bad";
+    }
+
+    if (overallScore <= 60) {
+      return "medium";
+    }
+
+    return "good";
+  }, [job?.result?.overallScore]);
+
+  const resultSoundPlayer = useAudioPlayer(resultSoundSource);
+  const resultSoundStatus = useAudioPlayerStatus(resultSoundPlayer);
+
   function goBack() {
     if (router.canGoBack()) {
       router.back();
@@ -53,6 +111,10 @@ function ResultScreenContent() {
         setLoading(true);
         setLoadError(false);
 
+        console.log("[ResultScreen] Loading result", {
+          jobId,
+        });
+
         if (!jobId) {
           setJob(null);
           setSong(null);
@@ -63,6 +125,14 @@ function ResultScreenContent() {
 
         if (!mounted) return;
 
+        console.log("[ResultScreen] Job loaded", {
+          jobId: foundJob?.id,
+          status: foundJob?.status,
+          songId: foundJob?.songId,
+          overallScore: foundJob?.result?.overallScore,
+          hasResult: Boolean(foundJob?.result),
+        });
+
         setJob(foundJob);
 
         if (foundJob?.songId) {
@@ -70,12 +140,17 @@ function ResultScreenContent() {
 
           if (!mounted) return;
 
+          console.log("[ResultScreen] Song loaded", {
+            songId: foundJob.songId,
+            title: foundSong?.title,
+          });
+
           setSong(foundSong);
         } else {
           setSong(null);
         }
       } catch (error) {
-        console.log("Load result error:", error);
+        console.log("[ResultScreen] Load result error:", error);
 
         if (!mounted) return;
 
@@ -94,10 +169,104 @@ function ResultScreenContent() {
     };
   }, [jobId]);
 
-  const feedback = useMemo(() => {
-    if (!job) return "";
-    return getMainFeedback(job);
-  }, [job]);
+  useEffect(() => {
+    async function playResultSoundOnce() {
+      try {
+        if (loading) return;
+        if (loadError) return;
+        if (!jobId) return;
+        if (!job?.result) return;
+        if (!resultSoundSource) return;
+
+        if (resultSoundAttemptedRef.current) {
+          console.log("[ResultScreen] Result sound skipped in current mount", {
+            jobId,
+          });
+          return;
+        }
+
+        resultSoundAttemptedRef.current = true;
+
+        const storageKey = `${RESULT_SOUND_STORAGE_KEY_PREFIX}:${jobId}`;
+        const alreadyPlayed = await AsyncStorage.getItem(storageKey);
+
+        console.log("[ResultScreen] Result sound check", {
+          jobId,
+          storageKey,
+          alreadyPlayed,
+          overallScore: job.result.overallScore,
+          resultSoundType,
+        });
+
+        if (alreadyPlayed === "true") {
+          console.log("[ResultScreen] Result sound already played for this job", {
+            jobId,
+          });
+          return;
+        }
+
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+          shouldRouteThroughEarpiece: false,
+          shouldPlayInBackground: false,
+          interruptionMode: "doNotMix",
+        });
+
+        console.log("[ResultScreen] Playing result sound", {
+          jobId,
+          overallScore: job.result.overallScore,
+          resultSoundType,
+        });
+
+        resultSoundPlayer.seekTo(0);
+        resultSoundPlayer.play();
+
+        await AsyncStorage.setItem(storageKey, "true");
+
+        console.log("[ResultScreen] Result sound marked as played", {
+          jobId,
+          storageKey,
+        });
+      } catch (error) {
+        console.log("[ResultScreen] Play result sound once error:", error);
+      }
+    }
+
+    playResultSoundOnce();
+  }, [
+    loading,
+    loadError,
+    jobId,
+    job,
+    resultSoundSource,
+    resultSoundPlayer,
+    resultSoundType,
+  ]);
+
+  useEffect(() => {
+    console.log("[ResultScreen] Result sound status changed", {
+      playing: resultSoundStatus.playing,
+      currentTime: resultSoundStatus.currentTime,
+      duration: resultSoundStatus.duration,
+      resultSoundType,
+    });
+  }, [
+    resultSoundStatus.playing,
+    resultSoundStatus.currentTime,
+    resultSoundStatus.duration,
+    resultSoundType,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        resultSoundPlayer.pause();
+      } catch {
+        // Ignore cleanup audio errors.
+      }
+    };
+  }, [resultSoundPlayer]);
 
   if (loading) {
     return (
@@ -134,8 +303,7 @@ function ResultScreenContent() {
         onActionPress={goBack}
       />
     );
-  } 
-  
+  }
 
   const result = job.result;
   const items = result.items ?? [];
