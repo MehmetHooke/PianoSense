@@ -3,12 +3,14 @@
 import type { AppColors } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   ScrollView,
   Text,
   View,
+  type LayoutChangeEvent,
   type ViewStyle,
 } from "react-native";
 
@@ -51,7 +53,8 @@ function getProcessingStep(status?: string): ProcessingStep {
     return {
       key: "processing",
       title: "Notalar karşılaştırılıyor",
-      description: "Orijinal melodi ile performansındaki nota ve zamanlama farkları inceleniyor.",
+      description:
+        "Orijinal melodi ile performansındaki nota ve zamanlama farkları inceleniyor.",
       progress: 78,
     };
   }
@@ -260,13 +263,73 @@ function NoteSkeletonItem({
   );
 }
 
-export function ResultProcessingSkeleton({
-  colors,
-  status,
-  isDark,
-}: Props) {
+export function ResultProcessingSkeleton({ colors, status, isDark }: Props) {
   const step = useMemo(() => getProcessingStep(status), [status]);
   const imageSource = isDark ? insightDarkImage : insightLightImage;
+
+  const [displayedStep, setDisplayedStep] = useState(step);
+  const [progressBarWidth, setProgressBarWidth] = useState(0);
+
+  const progressValue = useRef(new Animated.Value(step.progress)).current;
+  const textOpacity = useRef(new Animated.Value(1)).current;
+  const textTranslateY = useRef(new Animated.Value(0)).current;
+
+  const animatedProgressWidth = progressValue.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, progressBarWidth],
+  });
+
+  useEffect(() => {
+    Animated.timing(progressValue, {
+      toValue: step.progress,
+      duration: 850,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [progressValue, step.progress]);
+
+  useEffect(() => {
+    if (displayedStep.key === step.key) return;
+
+    Animated.parallel([
+      Animated.timing(textOpacity, {
+        toValue: 0,
+        duration: 160,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(textTranslateY, {
+        toValue: -6,
+        duration: 160,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setDisplayedStep(step);
+
+      textTranslateY.setValue(8);
+      textOpacity.setValue(0);
+
+      Animated.parallel([
+        Animated.timing(textOpacity, {
+          toValue: 1,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(textTranslateY, {
+          toValue: 0,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, [displayedStep.key, step, textOpacity, textTranslateY]);
+
+  function handleProgressTrackLayout(event: LayoutChangeEvent) {
+    setProgressBarWidth(event.nativeEvent.layout.width);
+  }
 
   return (
     <ScrollView
@@ -361,7 +424,6 @@ export function ResultProcessingSkeleton({
                 width: 132,
                 height: 132,
                 borderRadius: 34,
-                
                 alignItems: "center",
                 justifyContent: "center",
                 overflow: "hidden",
@@ -414,7 +476,13 @@ export function ResultProcessingSkeleton({
                 />
               </View>
 
-              <View style={{ flex: 1 }}>
+              <Animated.View
+                style={{
+                  flex: 1,
+                  opacity: textOpacity,
+                  transform: [{ translateY: textTranslateY }],
+                }}
+              >
                 <Text
                   style={{
                     color: colors.text,
@@ -422,7 +490,7 @@ export function ResultProcessingSkeleton({
                     fontWeight: "900",
                   }}
                 >
-                  {step.title}
+                  {displayedStep.title}
                 </Text>
 
                 <Text
@@ -433,22 +501,25 @@ export function ResultProcessingSkeleton({
                     marginTop: 2,
                   }}
                 >
-                  {step.description}
+                  {displayedStep.description}
                 </Text>
-              </View>
+              </Animated.View>
 
-              <Text
+              <Animated.Text
                 style={{
                   color: colors.primary,
                   fontSize: 12,
                   fontWeight: "900",
+                  opacity: textOpacity,
+                  transform: [{ translateY: textTranslateY }],
                 }}
               >
-                %{step.progress}
-              </Text>
+                %{displayedStep.progress}
+              </Animated.Text>
             </View>
 
             <View
+              onLayout={handleProgressTrackLayout}
               style={{
                 height: 9,
                 borderRadius: 999,
@@ -456,9 +527,9 @@ export function ResultProcessingSkeleton({
                 overflow: "hidden",
               }}
             >
-              <View
+              <Animated.View
                 style={{
-                  width: `${step.progress}%`,
+                  width: animatedProgressWidth,
                   height: "100%",
                   borderRadius: 999,
                   backgroundColor: colors.primary,

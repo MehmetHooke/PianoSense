@@ -244,19 +244,6 @@ function ResultScreenContent() {
     resultSoundType,
   ]);
 
-  useEffect(() => {
-    console.log("[ResultScreen] Result sound status changed", {
-      playing: resultSoundStatus.playing,
-      currentTime: resultSoundStatus.currentTime,
-      duration: resultSoundStatus.duration,
-      resultSoundType,
-    });
-  }, [
-    resultSoundStatus.playing,
-    resultSoundStatus.currentTime,
-    resultSoundStatus.duration,
-    resultSoundType,
-  ]);
 
   useEffect(() => {
     return () => {
