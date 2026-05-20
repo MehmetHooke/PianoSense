@@ -1,0 +1,350 @@
+[33mcommit bc94c12541251d78ab388cd96ce56b95d5c9a7eb[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeat-audio[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Wed May 20 20:26:56 2026 +0300
+
+    musics volume is upgraded iwth ffmpeg
+
+[33mcommit 03c37cea20094f9abdfa757654bfda39920aacbd[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Wed May 20 20:24:18 2026 +0300
+
+    replaced piano image iwth lower resulution
+
+[33mcommit 77a7e2af5733eec4580dcfdeb7f7003f00764222[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Wed May 20 20:23:59 2026 +0300
+
+    added new animations
+
+[33mcommit f9582b1809689b482a0c49cc47669c3e9ee431d1[m[33m ([m[1;31morigin/feat-processing[m[33m, [m[1;32mfeat-processing[m[33m)[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 23:59:24 2026 +0300
+
+    changed processing screen ui and ux
+
+[33mcommit dbba0c8695069bbcf6baa284f2d881d7d54adbb4[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 23:44:56 2026 +0300
+
+    changed async function system
+
+[33mcommit 28a71cdc973762f9ae5b401fd9e349fb31e00ef6[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 22:04:44 2026 +0300
+
+    submitting changed
+
+[33mcommit c6f04d04110e11eaf04b8fa9c6507bbbf85388da[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 22:04:20 2026 +0300
+
+    changed functionts to create job after pending to process screen work fine
+
+[33mcommit 24c3f359aa2ac703e70c4ce86fe3124cd85b58ff[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 22:03:46 2026 +0300
+
+    changed status bar
+
+[33mcommit 0f70be72b16cc0a19e21c576827b0432e694707f[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 22:03:19 2026 +0300
+
+    added new functionts to async uploading and create analyses job
+
+[33mcommit e5de1d32f1e40de08ac4821bff233afa34db2892[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 21:59:22 2026 +0300
+
+    added nullable recordedAudio
+
+[33mcommit 2878f3c92169d036b5310e5e5a90c18d54b3854e[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:29:53 2026 +0300
+
+    register page ui and ux chaned added role
+
+[33mcommit 5a61365b12be3e4115f5afb05ebb3934a7c115e6[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:29:27 2026 +0300
+
+    profile page complated with new components
+
+[33mcommit e1d093f39d52819bf554f07b4c198f5acb489c88[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:28:56 2026 +0300
+
+    new user type
+
+[33mcommit 93b9b5fa684e06c3a71f6698ff94ede0314af4c5[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:28:46 2026 +0300
+
+    added new user profile service layer creatin user profile
+
+[33mcommit 943ddeddacbb57fdbcae4573ec7779812ddf01ca[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:28:17 2026 +0300
+
+    added new profileImages constants
+
+[33mcommit 212ba1977b01ab1e46b9111a21d5ab38bf59553c[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:27:34 2026 +0300
+
+    added new components for settings page
+
+[33mcommit 19c133e08acbea52e2dfebdb5aaddbcf4d5e8a57[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Tue May 19 04:27:06 2026 +0300
+
+    added new profile images
+
+[33mcommit 2a304c91ac7bafabc3681e2c3b15ed2b7092f46a[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Mon May 18 20:37:09 2026 +0300
+
+    settings page added new carousel
+
+[33mcommit d12be144616c998e85d0686dd0af1dd13fc8ef27[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sun May 17 01:10:53 2026 +0300
+
+    added hero card new image and ui
+
+[33mcommit 3d588a9890a582261334573aa9983a19f76d2d77[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sun May 17 00:41:22 2026 +0300
+
+    added home page real values and song titles
+
+[33mcommit 5bfa0e9512ad73f1380d4297e74a2e8c49d7a009[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sun May 17 00:41:02 2026 +0300
+
+    added song title
+
+[33mcommit 3809985cbaf05c39894cc501d7322932e871d212[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sun May 17 00:40:51 2026 +0300
+
+    changed ui
+
+[33mcommit 760ef1442288884a2151e518eed5dc3f1c54b3e2[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sun May 17 00:40:15 2026 +0300
+
+    added songTitle on service layer
+
+[33mcommit c96fd0c6669dd3b7e6c4ddb9a92eba458030e232[m[33m ([m[1;31morigin/feat-record[m[33m, [m[1;32mfeat-record[m[33m)[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:23:28 2026 +0300
+
+    Result page ux and ui updates
+
+[33mcommit 6b6f47c246fbee5d08cee2a038ddc646a603731e[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:22:57 2026 +0300
+
+    added result utility
+
+[33mcommit 6aefc80511f04b7dc794945ace365cc87bf48287[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:22:38 2026 +0300
+
+    feat-record: top bar component added
+
+[33mcommit 839ea493b1cd5747647e4ed072002b9315dcf2e0[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:22:22 2026 +0300
+
+    feat-record: added result state view card
+
+[33mcommit 9cd0d48aca41ea1d1b9f7f20a7be0c15b4f06c8d[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:22:05 2026 +0300
+
+    feat-record: Result score card
+
+[33mcommit 3bf8a44dc5d208fcba9de03a059bc68431f6d046[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:21:51 2026 +0300
+
+    feat-record: note detail card
+
+[33mcommit b836c44c92f68e7eb94a0c052902efa0aec342bd[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:21:41 2026 +0300
+
+    feat-record: metric grid card components
+
+[33mcommit bf03beb6304fd889fdcb2c9fa61d856de52e1e00[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:21:28 2026 +0300
+
+    feat-record: hero card component
+
+[33mcommit 23592ccd8f1ddc6d581d6ccf481d341be6716f1c[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:21:17 2026 +0300
+
+    feat-record: added result empty component
+
+[33mcommit a55284899eb509f2e130b76b8f58c132a86ff257[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:20:47 2026 +0300
+
+    feat-record: changed text color to warning color
+
+[33mcommit ac6a0b80a2b7585c587f62572e17ed0696958db2[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 20:20:14 2026 +0300
+
+    feat-record: added insgiht images
+
+[33mcommit 4e988af23f948603f5a6732bd82510e1a480dd8f[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 19:43:09 2026 +0300
+
+    feat-record: some ui changes
+
+[33mcommit 5b88b6c27b2136d58619c8cb16e23e7bf0c95f1f[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:42:26 2026 +0300
+
+    feat-record: all components added recording page
+
+[33mcommit da0defde782f968023783f60dbfd1d6fc03185b6[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:41:45 2026 +0300
+
+    feat-record: added beatsBeforeRecording for metronome
+
+[33mcommit dd278cdd321c4316aae218bdaee719600b3d93aa[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:40:54 2026 +0300
+
+    feat-record: Added sen to anaylses button added component
+
+[33mcommit 3e2002c5f5c14b7b1945de772e4a588252d0446c[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:40:32 2026 +0300
+
+    feat-record: Added after recording succes card  component
+
+[33mcommit 839bb746e29c4413527a207e8d073e257fe5cd8e[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:40:09 2026 +0300
+
+    feat-record: Added Header component
+
+[33mcommit 7f583282f9980eeeaa131ac5eb050f099cb19a85[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:39:53 2026 +0300
+
+    feat-record: Added original music play component
+
+[33mcommit 439e88835ff895b23b00be4fe3c6e3de205e85f4[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:39:32 2026 +0300
+
+    feat-record: Added metronome component
+
+[33mcommit 4f1a4efbf04445722d82c54d48abc0bcb628be51[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Fri May 15 17:38:53 2026 +0300
+
+    added metronome sound effect
+
+[33mcommit 6fea865247e6cecfee0523eb78c6687647368887[m[33m ([m[1;31morigin/feat-ux[m[33m, [m[1;32mfeat-ux[m[33m)[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 21:38:12 2026 +0300
+
+    compleated home,insight,profile,practice pages and their compoennts.
+
+[33mcommit 71a04922938f94b1892aa4fecc68655eec800204[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 19:04:28 2026 +0300
+
+    added purple primary color
+
+[33mcommit 615b81203461ed99860c2418d52a55e2b54c769e[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 18:32:50 2026 +0300
+
+    added profile component
+
+[33mcommit 00081636acaa2f90102fe57b69c08c37a2eaa965[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 18:32:14 2026 +0300
+
+    added appAlert provider
+
+[33mcommit 461fff017dcc5ff6320f5ca0c1c61e269cdb36b0[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 18:31:42 2026 +0300
+
+    added new luqiud navbar and changed page names.
+
+[33mcommit 65835dfedd86c64c8d1e98544e2a52ee87fbdadd[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 18:29:44 2026 +0300
+
+    added custom  app alert
+
+[33mcommit 20232c5181a640bf8f8323888e9f18798e9ef7c0[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Thu May 14 18:28:55 2026 +0300
+
+    changed theme colors
+
+[33mcommit f7ba8496eb1ef0cd788dee1356a5730752b5211e[m[33m ([m[1;33mtag: [m[1;33mversion-1.1.0[m[33m)[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Wed May 13 02:34:07 2026 +0300
+
+    feat: working mvp versiyon 1.1.0
+
+[33mcommit 0193c245f10a7aeacca42a79858f2bb644fb12e4[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Mon May 11 16:31:47 2026 +0300
+
+    feat: start analysis jobs with callable function
+
+[33mcommit 807e2c2b6fb4e0aa87b18ce93ee3df4657200943[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Mon May 11 15:24:23 2026 +0300
+
+    added theme and global auth security
+
+[33mcommit 5a08e3c6feb7abf302187080ebf04b2a799fdee8[m[33m ([m[1;33mtag: [m[1;33msprint1-1-compleate[m[33m)[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sat May 9 19:12:44 2026 +0300
+
+    feat: complete sprint 1 audio recording and mock analysis flow
+
+[33mcommit f6055f7bf4b2319b887e00e97a7389be49385666[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sat May 9 19:03:08 2026 +0300
+
+    sprint 1- listen music- record voice- select music
+
+[33mcommit cfe8abb469f48d62d33c97742531b27f3ebd8619[m
+Merge: 2b8e993 02bc885
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sat May 9 15:10:55 2026 +0300
+
+    Merge branch 'main' of https://github.com/MehmetHooke/PianoSense
+
+[33mcommit 02bc88510db9a61d24ed4b913be6a9dd500ac49c[m
+Author: Mehmet Hoke <95850314+MehmetHooke@users.noreply.github.com>
+Date:   Sat May 9 15:05:08 2026 +0300
+
+    Initial commit
+
+[33mcommit 2b8e99362fe7be3dd4718fc6f45c2d8c57cfc998[m
+Author: MehmetHooke <hoke628@gmail.com>
+Date:   Sat May 9 15:05:03 2026 +0300
+
+    Initial commit
+    
+    Generated by create-expo-app 3.5.3.
