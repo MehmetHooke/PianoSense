@@ -11,8 +11,6 @@ type Props = {
 export function RecentAnalysisList({ jobs, onOpenJob }: Props) {
   const { colors } = useAppTheme();
 
-  const recentJobs = jobs.slice(0, 8);
-
   return (
     <View style={{ marginTop: 22 }}>
       <View
@@ -43,7 +41,7 @@ export function RecentAnalysisList({ jobs, onOpenJob }: Props) {
               marginTop: 3,
             }}
           >
-            Son tamamlanan çalışmaların
+            Tamamlanan tüm çalışmaların
           </Text>
         </View>
 
@@ -54,12 +52,12 @@ export function RecentAnalysisList({ jobs, onOpenJob }: Props) {
             fontWeight: "900",
           }}
         >
-          {recentJobs.length} sonuç
+          {jobs.length} sonuç
         </Text>
       </View>
 
       <View style={{ gap: 12 }}>
-        {recentJobs.map((job, index) => (
+        {jobs.map((job, index) => (
           <RecentAnalysisCard
             key={job.id}
             job={job}
