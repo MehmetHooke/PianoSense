@@ -58,7 +58,7 @@ function ProcessingScreenContent() {
   );
 
   function goHome() {
-    router.replace("/(tabs)");
+    router.replace("/(student)");
   }
 
   function goBack() {

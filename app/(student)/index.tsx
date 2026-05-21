@@ -120,7 +120,7 @@ export default function HomeScreen() {
       >
         <HomeHeroCard
           onStartPractice={() => {
-            router.push("/(tabs)/practice");
+            router.push("/(student)/practice");
           }}
         />
 
@@ -129,7 +129,7 @@ export default function HomeScreen() {
           averageScore={stats.averageScore}
           bestScore={stats.bestScore}
           onPress={() => {
-            router.push("/(tabs)/insights");
+            router.push("/(student)/insights");
           }}
         />
 
@@ -140,7 +140,7 @@ export default function HomeScreen() {
             router.push(`/result/${jobId}`);
           }}
           onStartPractice={() => {
-            router.push("/(tabs)/practice");
+            router.push("/(student)/practice");
           }}
         />
       </ScrollView>

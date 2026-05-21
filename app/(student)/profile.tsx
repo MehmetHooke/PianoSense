@@ -1,4 +1,4 @@
-// app/(tabs)/profile.tsx
+// app/(student)/profile.tsx
 
 import { AppInfoCard } from "@/src/components/settings/AppInfoCard";
 import { ProfileImagePickerModal } from "@/src/components/settings/ProfileImagePickerModal";

@@ -1,4 +1,4 @@
-// app/(tabs)/_layout.tsx
+// app/(student)/_layout.tsx
 
 import { AuthGate } from "@/src/components/auth/AuthGate";
 import { LiquidTabBar } from "@/src/components/navigation/LiquidTabBar";

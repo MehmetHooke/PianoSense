@@ -38,7 +38,7 @@ export function GuestGate({ children }: Props) {
   }
 
   if (user) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/(student)" />;
   }
 
   return <>{children}</>;

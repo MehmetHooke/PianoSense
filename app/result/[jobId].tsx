@@ -100,7 +100,7 @@ function ResultScreenContent() {
       return;
     }
 
-    router.replace("/(tabs)/insights");
+    router.replace("/(student)/insights");
   }
 
   useEffect(() => {
