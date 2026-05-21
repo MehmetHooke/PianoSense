@@ -99,6 +99,36 @@ export async function startAnalysisJob({
   return response.data.jobId;
 }
 
+export function listenCompletedAnalysisJobsByUserId(
+  userId: string,
+  callback: (jobs: AnalysisJob[]) => void,
+  onError?: (error: unknown) => void,
+) {
+  const jobsRef = collection(db, "analysisJobs");
+
+  const jobsQuery = query(
+    jobsRef,
+    where("userId", "==", userId),
+    where("status", "==", "completed"),
+    orderBy("completedAt", "desc"),
+  );
+
+  return onSnapshot(
+    jobsQuery,
+    (snapshot) => {
+      const jobs = snapshot.docs.map((docSnap) => {
+        return {
+          id: docSnap.id,
+          ...docSnap.data(),
+        } as AnalysisJob;
+      });
+
+      callback(jobs);
+    },
+    onError,
+  );
+}
+
 export async function markAnalysisJobFailed({
   jobId,
   errorCode,
