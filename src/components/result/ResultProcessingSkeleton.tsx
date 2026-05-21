@@ -274,6 +274,35 @@ export function ResultProcessingSkeleton({ colors, status, isDark }: Props) {
   const textOpacity = useRef(new Animated.Value(1)).current;
   const textTranslateY = useRef(new Animated.Value(0)).current;
 
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -10,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [floatAnim]);
+
+
+
   const animatedProgressWidth = progressValue.interpolate({
     inputRange: [0, 100],
     outputRange: [0, progressBarWidth],
@@ -429,15 +458,21 @@ export function ResultProcessingSkeleton({ colors, status, isDark }: Props) {
                 overflow: "hidden",
               }}
             >
-              <Image
-                source={imageSource}
-                contentFit="contain"
-                transition={180}
+              <Animated.View
                 style={{
-                  width: 132,
-                  height: 132,
+                  transform: [{ translateY: floatAnim }],
                 }}
-              />
+              >
+                <Image
+                  source={imageSource}
+                  contentFit="contain"
+                  transition={180}
+                  style={{
+                    width: 132,
+                    height: 132,
+                  }}
+                />
+              </Animated.View>
             </View>
           </View>
 
