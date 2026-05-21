@@ -25,6 +25,7 @@ import {
     useAudioRecorder,
     useAudioRecorderState,
 } from "expo-audio";
+
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
@@ -62,7 +63,7 @@ function RecordingScreenContent() {
     const [originalLoading, setOriginalLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
     const [recordedUri, setRecordedUri] = useState<string | null>(null);
-
+    const [recordedDurationMillis, setRecordedDurationMillis] = useState(0);
     const [recordingPhase, setRecordingPhase] =
         useState<RecordingPhase>("idle");
     const [currentBeat, setCurrentBeat] = useState(1);
@@ -86,22 +87,24 @@ function RecordingScreenContent() {
     const beatsBeforeRecording = song?.beatsBeforeRecording ?? 4;
     const beatDurationMs = 60000 / bpm;
 
-
-    // 4. tick sesinin kesilmemesi için çok kısa güvenli pay.
-    // Eski sistemdeki gibi tam bir beat beklemiyoruz.
+    // 4. tick sesinin duyulması için küçük pay.
+    // Eski sistemdeki gibi tam 1 beat beklemiyoruz.
     const lastTickAudibleDelayMs = Math.min(
         180,
         Math.max(120, beatDurationMs * 0.2)
     );
 
-    const durationMillis = recorderState.durationMillis ?? 0;
+    const liveDurationMillis = recorderState.durationMillis ?? 0;
+    const durationMillis =
+        recordingPhase === "recorded" ? recordedDurationMillis : liveDurationMillis;
     const durationSeconds = Math.floor(durationMillis / 1000);
 
     function logRecorderState(label: string) {
         console.log(`[RecordingScreen] ${label}`, {
             phase: recordingPhase,
             recorderPrepared: recorderPreparedRef.current,
-            recorderDurationMillis: recorderState.durationMillis,
+            liveDurationMillis: recorderState.durationMillis,
+            recordedDurationMillis,
             recorderIsRecording: recorderState.isRecording,
             recorderUri: audioRecorder.uri,
             recordedUri,
@@ -183,6 +186,13 @@ function RecordingScreenContent() {
 
             countInActiveRef.current = false;
             clearCountInTimer();
+
+            try {
+                tickPlayer.pause();
+                tickPlayer.seekTo(0);
+            } catch {
+                // Ignore tick cleanup errors.
+            }
 
             console.log(
                 "[RecordingScreen] Switching audio mode to recording mode after count-in"
@@ -490,6 +500,7 @@ function RecordingScreenContent() {
             clearMetronomeTimers();
 
             setRecordedUri(null);
+            setRecordedDurationMillis(0);
             setCurrentBeat(1);
             setRecordingPhase("countIn");
 
@@ -545,6 +556,7 @@ function RecordingScreenContent() {
             recorderPreparedRef.current = false;
 
             setRecordedUri(null);
+            setRecordedDurationMillis(0);
             setCurrentBeat(1);
             setRecordingPhase("idle");
 
@@ -564,8 +576,12 @@ function RecordingScreenContent() {
 
     const stopRecording = async () => {
         try {
+            const durationMillisBeforeStop = recorderState.durationMillis ?? 0;
+            const durationSecondsBeforeStop = Math.floor(durationMillisBeforeStop / 1000);
+
             console.log("[RecordingScreen] stopRecording pressed", {
-                durationMillisBeforeStop: recorderState.durationMillis,
+                durationMillisBeforeStop,
+                durationSecondsBeforeStop,
                 isRecordingBeforeStop: recorderState.isRecording,
                 recorderUriBeforeStop: audioRecorder.uri,
             });
@@ -579,8 +595,9 @@ function RecordingScreenContent() {
 
             console.log("[RecordingScreen] Recording stopped", {
                 uri,
+                durationMillisBeforeStop,
+                durationSecondsBeforeStop,
                 durationMillisAfterStop: recorderState.durationMillis,
-                durationSeconds,
             });
 
             if (!uri) {
@@ -591,6 +608,7 @@ function RecordingScreenContent() {
             }
 
             setRecordedUri(uri);
+            setRecordedDurationMillis(durationMillisBeforeStop);
             setRecordingPhase("recorded");
             setCurrentBeat(1);
 
@@ -604,6 +622,8 @@ function RecordingScreenContent() {
 
             console.log("[RecordingScreen] Audio mode restored after stop", {
                 recordedUri: uri,
+                recordedDurationMillis: durationMillisBeforeStop,
+                recordedDurationSeconds: durationSecondsBeforeStop,
             });
         } catch (error) {
             console.log("[RecordingScreen] Stop recording error:", error);
@@ -688,6 +708,11 @@ function RecordingScreenContent() {
 
             setSubmitting(true);
             setSubmitStep("creatingJob");
+            console.log("[RecordingScreen] Recorded file before submit", {
+                uri: recordedUri,
+                durationMillis,
+                durationSeconds,
+            });
 
             console.log("[RecordingScreen] Submitting recording for analysis", {
                 userId: user.uid,
