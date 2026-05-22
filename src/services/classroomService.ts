@@ -9,13 +9,14 @@ import {
     collection,
     doc,
     getDocs,
+    increment,
     limit,
     onSnapshot,
     orderBy,
     query,
     runTransaction,
     serverTimestamp,
-    where
+    where,
 } from "firebase/firestore";
 
 const JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -162,29 +163,27 @@ export function listenClassStudents(
   callback: (students: ClassStudent[]) => void,
   onError?: (error: unknown) => void,
 ) {
-  const studentsQuery = query(
-    collection(db, "classes", classId, "students"),
-    where("status", "==", "active"),
-    orderBy("joinedAt", "desc"),
-  );
+  const studentsRef = collection(db, "classes", classId, "students");
 
   return onSnapshot(
-    studentsQuery,
+    studentsRef,
     (snapshot) => {
-      const students = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
+      const students = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data();
 
-        return {
-          studentId: data.studentId ?? docSnap.id,
-          studentCode: data.studentCode ?? "",
-          displayName: data.displayName ?? "İsimsiz Öğrenci",
-          name: data.name ?? "",
-          surname: data.surname ?? "",
-          profileImageId: data.profileImageId ?? "profile-boy-1",
-          status: data.status ?? "active",
-          joinedAt: data.joinedAt,
-        } as ClassStudent;
-      });
+          return {
+            studentId: data.studentId ?? docSnap.id,
+            studentCode: data.studentCode ?? "",
+            displayName: data.displayName ?? "İsimsiz Öğrenci",
+            name: data.name ?? "",
+            surname: data.surname ?? "",
+            profileImageId: data.profileImageId ?? "profile-boy-1",
+            status: data.status ?? "active",
+            joinedAt: data.joinedAt,
+          } as ClassStudent;
+        })
+        .filter((student) => student.status === "active");
 
       callback(students);
     },
@@ -241,6 +240,14 @@ export async function joinClassByCode(params: {
       params.studentId,
     );
 
+    const existingClassStudentSnap = await transaction.get(classStudentRef);
+
+    if (
+      existingClassStudentSnap.exists() &&
+      existingClassStudentSnap.data().status === "active"
+    ) {
+      throw new Error("Bu sınıfa zaten katıldın.");
+    }
     const studentClassRef = doc(
       db,
       "users",
@@ -305,6 +312,11 @@ export async function joinClassByCode(params: {
       },
       { merge: true },
     );
+
+    transaction.update(classDoc.ref, {
+      studentCount: increment(1),
+      updatedAt: now,
+    });
   });
 
   return {
