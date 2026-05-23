@@ -54,7 +54,7 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   const { showAlert } = useAppAlert();
   const [expandedSetting, setExpandedSetting] =
-    useState<ExpandedSetting>("theme");
+    useState<ExpandedSetting>(null);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);

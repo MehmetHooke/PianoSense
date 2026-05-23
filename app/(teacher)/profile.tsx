@@ -6,14 +6,14 @@ import { ProfileSummaryCard } from "@/src/components/settings/ProfileSummaryCard
 import { SettingsSectionAccordion } from "@/src/components/settings/SettingsSectionAccordion";
 import { ThemeSettingsCard } from "@/src/components/settings/ThemeSettingsCard";
 import {
-    DEFAULT_PROFILE_IMAGE_ID,
-    getProfileImageSource,
+  DEFAULT_PROFILE_IMAGE_ID,
+  getProfileImageSource,
 } from "@/src/constants/profileImages";
 import { useAuth } from "@/src/context/AuthContext";
 import { auth } from "@/src/services/firebase";
 import {
-    listenUserProfile,
-    updateUserProfileImage,
+  listenUserProfile,
+  updateUserProfileImage,
 } from "@/src/services/userProfileService";
 import { useAppTheme } from "@/src/theme/useTheme";
 import type { ProfileImageId, UserProfile } from "@/src/types/userProfile";
@@ -23,13 +23,13 @@ import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
 } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
   const { user } = useAuth();
 
   const [expandedSetting, setExpandedSetting] =
-    useState<ExpandedSetting>("theme");
+    useState<ExpandedSetting>(null);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
