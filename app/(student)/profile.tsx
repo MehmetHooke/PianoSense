@@ -11,6 +11,7 @@ import {
   getProfileImageSource,
 } from "@/src/constants/profileImages";
 import { useAuth } from "@/src/context/AuthContext";
+import { useAppAlert } from "@/src/hooks/useAppAlert";
 import { joinClassByCode, listenStudentClasses } from "@/src/services/classroomService";
 import { auth } from "@/src/services/firebase";
 import {
@@ -27,14 +28,13 @@ import { signOut } from "firebase/auth";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -52,7 +52,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { user } = useAuth();
-
+  const { showAlert } = useAppAlert();
   const [expandedSetting, setExpandedSetting] =
     useState<ExpandedSetting>("theme");
 
@@ -66,6 +66,31 @@ export default function ProfileScreen() {
   const [joiningClass, setJoiningClass] = useState(false);
   const [classJoinError, setClassJoinError] = useState("");
 
+
+  const [studentClassesLoading, setStudentClassesLoading] = useState(true);
+  const [studentClassesError, setStudentClassesError] = useState("");
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    setStudentClassesLoading(true);
+    setStudentClassesError("");
+
+    const unsubscribe = listenStudentClasses(
+      user.uid,
+      (classes) => {
+        setStudentClasses(classes);
+        setStudentClassesLoading(false);
+      },
+      (error) => {
+        console.log("STUDENT CLASSES LISTEN ERROR:", error);
+        setStudentClassesError("Sınıf bilgileri yüklenemedi.");
+        setStudentClassesLoading(false);
+      },
+    );
+
+    return unsubscribe;
+  }, [user?.uid]);
   useEffect(() => {
     if (!user?.uid) {
       setProfile(null);
@@ -137,10 +162,11 @@ export default function ProfileScreen() {
     } catch (error) {
       console.log("UPDATE PROFILE IMAGE ERROR:", error);
 
-      Alert.alert(
-        "Profil resmi değiştirilemedi",
-        "Profil resmin kaydedilirken bir sorun oluştu. Lütfen tekrar dene.",
-      );
+      showAlert({
+        type: "error",
+        title: "Profil resmi değiştirilemedi",
+        message: "Profil resmin kaydedilirken bir sorun oluştu. Lütfen tekrar dene.",
+      });
     } finally {
       setProfileImageSaving(false);
     }
@@ -154,10 +180,11 @@ export default function ProfileScreen() {
     } catch (error) {
       console.log("Logout error:", error);
 
-      Alert.alert(
-        "Çıkış yapılamadı",
-        "Hesabından çıkış yapılırken bir sorun oluştu. Lütfen tekrar dene.",
-      );
+      showAlert({
+        type: "error",
+        title: "Çıkış yapılamadı",
+        message: "Hesabından çıkış yapılırken bir sorun oluştu. Lütfen tekrar dene.",
+      });
     } finally {
       setLogoutLoading(false);
     }
@@ -184,10 +211,11 @@ export default function ProfileScreen() {
 
       setJoinCode("");
 
-      Alert.alert(
-        "Sınıfa katıldın",
-        "Sınıf bağlantın başarıyla oluşturuldu.",
-      );
+      showAlert({
+        type: "success",
+        title: "Sınıfa katıldın",
+        message: "Sınıf bağlantın başarıyla oluşturuldu.",
+      });
     } catch (error: any) {
       console.log("JOIN CLASS ERROR:", error);
       setClassJoinError(error?.message ?? "Sınıfa katılma işlemi başarısız oldu.");

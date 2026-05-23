@@ -1,31 +1,30 @@
 import { AuthGate } from "@/src/components/auth/AuthGate";
-import { SettingsSectionAccordion } from "@/src/components/settings/SettingsSectionAccordion";
+import { TeacherClassAccordion, teacherClassAccordionTransition } from "@/src/components/teacher/TeacherClassAccordion";
 import { useAuth } from "@/src/context/AuthContext";
+import { useAppAlert } from "@/src/hooks/useAppAlert";
 import {
   createClass,
-  listenClassStudents,
   listenTeacherClasses,
 } from "@/src/services/classroomService";
 import { useAppTheme } from "@/src/theme/useTheme";
-import type { ClassStudent, TeacherClass } from "@/src/types/classroom";
-import { alpha } from "@/src/utils/color";
+import type { TeacherClass } from "@/src/types/classroom";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
+import Animated from "react-native-reanimated";
 
 export default function TeacherClassesScreen() {
   const { colors } = useAppTheme();
   const { user } = useAuth();
-
+  const {showAlert} = useAppAlert();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [className, setClassName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -80,7 +79,10 @@ export default function TeacherClassesScreen() {
 
   async function copyJoinCode(joinCode: string) {
     await Clipboard.setStringAsync(joinCode);
-    Alert.alert("Kod kopyalandı", "Sınıf katılım kodu panoya kopyalandı.");
+    showAlert({
+      type:"info",
+      title:"Kod kopyalandı", 
+      message:"Sınıf katılım kodu panoya kopyalandı."});
   }
 
   return (
@@ -231,7 +233,8 @@ export default function TeacherClassesScreen() {
           ) : null}
         </View>
 
-        <View
+        <Animated.View
+          layout={teacherClassAccordionTransition}
           style={{
             marginTop: 20,
             backgroundColor: colors.card,
@@ -239,6 +242,7 @@ export default function TeacherClassesScreen() {
             padding: 20,
             borderWidth: 1,
             borderColor: colors.border,
+            overflow: "hidden",
           }}
         >
           <Text
@@ -267,7 +271,7 @@ export default function TeacherClassesScreen() {
           ) : (
             <View style={{ marginTop: 14, gap: 12 }}>
               {classes.map((classItem) => (
-                <ClassAccordion
+                <TeacherClassAccordion
                   key={classItem.id}
                   classItem={classItem}
                   expanded={expandedClassId === classItem.id}
@@ -282,205 +286,8 @@ export default function TeacherClassesScreen() {
               ))}
             </View>
           )}
-        </View>
+        </Animated.View>
       </ScrollView>
     </AuthGate>
-  );
-}
-
-function ClassAccordion({
-  classItem,
-  expanded,
-  onPress,
-  onCopyJoinCode,
-  colors,
-}: {
-  classItem: TeacherClass;
-  expanded: boolean;
-  onPress: () => void;
-  onCopyJoinCode: (joinCode: string) => void;
-  colors: any;
-}) {
-  const [students, setStudents] = useState<ClassStudent[]>([]);
-  const [studentsError, setStudentsError] = useState("");
-
-  useEffect(() => {
-    if (!expanded) return;
-
-    const unsubscribe = listenClassStudents(
-      classItem.id,
-      setStudents,
-      (error) => {
-        console.log("CLASS STUDENTS LISTEN ERROR:", error);
-        setStudentsError("Öğrenciler yüklenemedi.");
-      },
-    );
-
-    return unsubscribe;
-  }, [expanded, classItem.id]);
-
-  const studentCount =
-    typeof classItem.studentCount === "number"
-      ? classItem.studentCount
-      : students.length;
-
-  return (
-    <SettingsSectionAccordion
-      title={classItem.name}
-      description={`${studentCount} öğrenci`}
-      iconName="people-outline"
-      iconColor={colors.primary}
-      iconBackgroundColor={colors.primarySoft}
-      iconBorderColor={alpha(colors.primary, 0.18)}
-      expanded={expanded}
-      onPress={onPress}
-      colors={colors}
-    >
-      <Pressable
-        onPress={() => onCopyJoinCode(classItem.joinCode)}
-        style={({ pressed }) => ({
-          backgroundColor: colors.elevatedCard,
-          borderRadius: 18,
-          paddingVertical: 13,
-          paddingHorizontal: 14,
-          borderWidth: 1,
-          borderColor: alpha(colors.primary, 0.18),
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          opacity: pressed ? 0.84 : 1,
-          transform: [{ scale: pressed ? 0.99 : 1 }],
-        })}
-      >
-        <View>
-          <Text
-            style={{
-              color: colors.subtleText,
-              fontSize: 11,
-              fontWeight: "900",
-              letterSpacing: 0.8,
-              textTransform: "uppercase",
-            }}
-          >
-            Katılım Kodu
-          </Text>
-
-          <Text
-            style={{
-              color: colors.text,
-              fontSize: 24,
-              fontWeight: "900",
-              letterSpacing: 3,
-              marginTop: 2,
-            }}
-          >
-            {classItem.joinCode}
-          </Text>
-        </View>
-
-        <Ionicons name="copy-outline" size={20} color={colors.primary} />
-      </Pressable>
-
-      <View style={{ marginTop: 16 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 14,
-            fontWeight: "900",
-          }}
-        >
-          Öğrenciler
-        </Text>
-
-        {studentsError ? (
-          <Text
-            style={{
-              marginTop: 8,
-              color: colors.danger ?? colors.text,
-              fontSize: 13,
-              fontWeight: "700",
-            }}
-          >
-            {studentsError}
-          </Text>
-        ) : students.length === 0 ? (
-          <Text
-            style={{
-              marginTop: 8,
-              color: colors.mutedText,
-              fontSize: 13,
-              fontWeight: "600",
-              lineHeight: 19,
-            }}
-          >
-            Bu sınıfa henüz öğrenci katılmadı.
-          </Text>
-        ) : (
-          <View style={{ marginTop: 10, gap: 8 }}>
-            {students.map((student) => (
-              <View
-                key={student.studentId}
-                style={{
-                  backgroundColor: colors.elevatedCard,
-                  borderRadius: 16,
-                  padding: 12,
-                  borderWidth: 1,
-                  borderColor: colors.softBorder,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                }}
-              >
-                <View
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 14,
-                    backgroundColor: colors.primarySoft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: colors.primary,
-                      fontSize: 14,
-                      fontWeight: "900",
-                    }}
-                  >
-                    {(student.displayName || "Ö").charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.text,
-                      fontSize: 14,
-                      fontWeight: "900",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {student.displayName}
-                  </Text>
-
-                  <Text
-                    style={{
-                      color: colors.mutedText,
-                      fontSize: 12,
-                      fontWeight: "700",
-                      marginTop: 2,
-                    }}
-                    numberOfLines={1}
-                  >
-                    Kod: {student.studentCode}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-    </SettingsSectionAccordion>
   );
 }

@@ -1,5 +1,6 @@
+// src\components\teacher\TeacherClassAccordion.tsx
 import {
-    listenClassStudents,
+  listenClassStudents,
 } from "@/src/services/classroomService";
 import type { ClassStudent, TeacherClass } from "@/src/types/classroom";
 import { alpha } from "@/src/utils/color";
@@ -16,7 +17,7 @@ type Props = {
   colors: any;
 };
 
-const accordionTransition = LinearTransition.springify()
+export const teacherClassAccordionTransition = LinearTransition.springify()
   .damping(45)
   .stiffness(200);
 
@@ -49,7 +50,7 @@ export function TeacherClassAccordion({
 
   return (
     <Animated.View
-      layout={accordionTransition}
+      layout={teacherClassAccordionTransition}
       style={{
         backgroundColor: colors.surface,
         borderRadius: 24,
@@ -132,7 +133,7 @@ export function TeacherClassAccordion({
 
       {expanded ? (
         <Animated.View
-          layout={accordionTransition}
+          layout={teacherClassAccordionTransition}
           style={{
             marginTop: 15,
             paddingTop: 15,
