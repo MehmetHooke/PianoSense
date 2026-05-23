@@ -8,10 +8,56 @@ export type InsightsSummary = {
   averagePitchScore: number;
   averageTimingScore: number;
   weakestArea: WeakArea;
+  lastActivityAt?: Date | null;
+  lastActivityText?: string;
 };
 
 function round(value: number) {
   return Math.round(value);
+}
+
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "toDate" in value &&
+    typeof (value as { toDate: () => Date }).toDate === "function"
+  ) {
+    return (value as { toDate: () => Date }).toDate();
+  }
+
+  return null;
+}
+
+function getRelativeDateText(date: Date | null) {
+  if (!date) return undefined;
+
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 1000 / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMinutes < 1) return "Az önce";
+  if (diffMinutes < 60) return `${diffMinutes} dk önce`;
+  if (diffHours < 24) return `${diffHours} saat önce`;
+  if (diffDays < 7) return `${diffDays} gün önce`;
+
+  return date.toLocaleDateString("tr-TR", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function getJobActivityDate(job: AnalysisJob) {
+  return (
+    toDate(job.completedAt) ?? toDate(job.updatedAt) ?? toDate(job.createdAt)
+  );
 }
 
 export function calculateInsightsSummary(jobs: AnalysisJob[]): InsightsSummary {
@@ -26,6 +72,8 @@ export function calculateInsightsSummary(jobs: AnalysisJob[]): InsightsSummary {
       averagePitchScore: 0,
       averageTimingScore: 0,
       weakestArea: "none",
+      lastActivityAt: null,
+      lastActivityText: undefined,
     };
   }
 
@@ -65,6 +113,16 @@ export function calculateInsightsSummary(jobs: AnalysisJob[]): InsightsSummary {
   const averagePitchScore = round(pitchScoreSum / totalAnalyses);
   const averageTimingScore = round(timingScoreSum / totalAnalyses);
 
+  const latestJob = [...completedJobs].sort((a, b) => {
+    const dateA = getJobActivityDate(a)?.getTime() ?? 0;
+    const dateB = getJobActivityDate(b)?.getTime() ?? 0;
+
+    return dateB - dateA;
+  })[0];
+
+  const lastActivityAt = latestJob ? getJobActivityDate(latestJob) : null;
+  const lastActivityText = getRelativeDateText(lastActivityAt);
+
   let weakestArea: WeakArea = "none";
 
   if (averageTimingScore < averagePitchScore - 8) {
@@ -91,6 +149,8 @@ export function calculateInsightsSummary(jobs: AnalysisJob[]): InsightsSummary {
     averagePitchScore,
     averageTimingScore,
     weakestArea,
+    lastActivityAt,
+    lastActivityText,
   };
 }
 

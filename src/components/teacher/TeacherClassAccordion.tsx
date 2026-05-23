@@ -10,7 +10,7 @@ import type { ClassStudent, TeacherClass } from "@/src/types/classroom";
 import { alpha } from "@/src/utils/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 
 type Props = {
@@ -19,9 +19,10 @@ type Props = {
   onPress: () => void;
   onCopyJoinCode: (joinCode: string) => void;
   onOpenStudent: (student: ClassStudent) => void;
+  onDeleteClass: (classItem: TeacherClass) => void;
+  isDeleting?: boolean;
   colors: any;
 };
-
 export const teacherClassAccordionTransition = LinearTransition.springify()
   .damping(45)
   .stiffness(200);
@@ -32,6 +33,8 @@ export function TeacherClassAccordion({
   onPress,
   onCopyJoinCode,
   onOpenStudent,
+  onDeleteClass,
+  isDeleting = false,
   colors,
 }: Props) {
   const [students, setStudents] = useState<ClassStudent[]>([]);
@@ -196,6 +199,58 @@ export function TeacherClassAccordion({
             />
           </Pressable>
 
+          <Pressable
+            onPress={() => onDeleteClass(classItem)}
+            disabled={isDeleting}
+            style={({ pressed }) => ({
+              marginTop: 12,
+              backgroundColor: alpha(colors.danger ?? "#EF4444", 0.1),
+              borderRadius: 18,
+              paddingVertical: 13,
+              paddingHorizontal: 14,
+              borderWidth: 1,
+              borderColor: alpha(colors.danger ?? "#EF4444", 0.2),
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              opacity: pressed || isDeleting ? 0.72 : 1,
+            })}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: colors.danger ?? "#EF4444",
+                  fontSize: 14,
+                  fontWeight: "900",
+                }}
+              >
+                Sınıfı sil
+              </Text>
+
+              <Text
+                style={{
+                  marginTop: 3,
+                  color: colors.mutedText,
+                  fontSize: 12,
+                  fontWeight: "600",
+                  lineHeight: 17,
+                }}
+              >
+                Bu sınıf öğretmen panelinden kaldırılır.
+              </Text>
+            </View>
+
+            {isDeleting ? (
+              <ActivityIndicator color={colors.danger ?? "#EF4444"} />
+            ) : (
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={colors.danger ?? "#EF4444"}
+              />
+            )}
+          </Pressable>
+
           <View style={{ marginTop: 16 }}>
             <Text
               style={{
@@ -278,7 +333,7 @@ export function TeacherClassAccordion({
                             width: 42,
                             height: 42,
                           }}
-                          
+
                         />
                       </View>
 

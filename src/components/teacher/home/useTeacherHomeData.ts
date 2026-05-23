@@ -1,8 +1,9 @@
+// src\components\teacher\home\useTeacherHomeData.ts
 import { getCompletedAnalysisJobsByUser } from "@/src/services/analysisJobService";
 import { listenTeacherClasses } from "@/src/services/classroomService";
 import {
-    listenFollowedStudents,
-    type FollowedStudent,
+  listenFollowedStudents,
+  type FollowedStudent,
 } from "@/src/services/teacherStudentService";
 import type { AnalysisJob } from "@/src/types/analysisJob";
 import type { TeacherClass } from "@/src/types/classroom";

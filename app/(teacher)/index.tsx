@@ -87,6 +87,7 @@ export default function TeacherDashboardScreen() {
 
       <TeacherQuickActionsCard
         colors={colors}
+        theme={theme}
         onCreateClass={() => router.push("/(teacher)/classes")}
         onFollowStudent={() => router.push("/(teacher)/students")}
         onOpenStudents={() => router.push("/(teacher)/students")}

@@ -66,7 +66,7 @@ export function AppInfoCard() {
               marginTop: 6,
             }}
           >
-            Öğretmen Rölü ve Sınıf işlemleri ekleniyor. Öğretmen için ayrı giriş yerine kayıt olurken öğretmen olarak kayıt olmaları yeterli olacaktır.Öğretmenler analiz yapamıyor.
+            Öğretmen Rolü ve Sınıf işlemleri ekleniyor. Öğretmen için ayrı giriş yerine kayıt olurken öğretmen olarak kayıt olmaları yeterli olacaktır.Öğretmenler analiz yapamıyor.
           </Text>
 
           <View

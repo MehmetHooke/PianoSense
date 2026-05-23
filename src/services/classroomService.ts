@@ -9,6 +9,7 @@ import type { UserProfile } from "@/src/types/userProfile";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   limit,
@@ -17,6 +18,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  updateDoc,
   where,
 } from "firebase/firestore";
 
@@ -327,4 +329,28 @@ export async function joinClassByCode(params: {
     joinCode: classData.joinCode,
     status: "active",
   } as StudentClass;
+}
+
+export async function deleteClass(params: {
+  teacherId: string;
+  classId: string;
+}) {
+  const classRef = doc(db, "classes", params.classId);
+  const classSnap = await getDoc(classRef);
+
+  if (!classSnap.exists()) {
+    throw new Error("Sınıf bulunamadı.");
+  }
+
+  const classData = classSnap.data();
+
+  if (classData.teacherId !== params.teacherId) {
+    throw new Error("Bu sınıfı silme yetkin yok.");
+  }
+
+  await updateDoc(classRef, {
+    status: "archived",
+    updatedAt: serverTimestamp(),
+    archivedAt: serverTimestamp(),
+  });
 }

@@ -151,7 +151,7 @@ export function InsightsContent({
 
   return (
     <>
-      <InsightsHeroCard summary={summary} />
+      <InsightsHeroCard summary={summary} mode={mode} />
 
       <InsightsMetricGrid summary={summary} />
 

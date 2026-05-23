@@ -5,6 +5,7 @@ import { useAuth } from "@/src/context/AuthContext";
 import { useAppAlert } from "@/src/hooks/useAppAlert";
 import {
   createClass,
+  deleteClass,
   listenTeacherClasses,
 } from "@/src/services/classroomService";
 import { useAppTheme } from "@/src/theme/useTheme";
@@ -26,12 +27,13 @@ import Animated from "react-native-reanimated";
 export default function TeacherClassesScreen() {
   const { colors } = useAppTheme();
   const { user } = useAuth();
-  const { showAlert } = useAppAlert();
+  const { showAlert, hideAlert } = useAppAlert();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [className, setClassName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
+  const [deletingClassId, setDeletingClassId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -86,6 +88,54 @@ export default function TeacherClassesScreen() {
       title: "Kod kopyalandı",
       message: "Sınıf katılım kodu panoya kopyalandı."
     });
+  }
+
+  function requestDeleteClass(classItem: TeacherClass) {
+    if (deletingClassId) return;
+
+    showAlert({
+      type: "warning",
+      title: "Sınıf silinsin mi?",
+      message: `"${classItem.name}" sınıfı öğretmen panelinden kaldırılacak. Bu işlemden emin misin?`,
+      primaryActionLabel: "Sınıfı sil",
+      onPrimaryAction: () => {
+        hideAlert();
+        void confirmDeleteClass(classItem);
+      },
+    });
+  }
+
+  async function confirmDeleteClass(classItem: TeacherClass) {
+    if (!user?.uid || deletingClassId) return;
+
+    try {
+      setDeletingClassId(classItem.id);
+
+      await deleteClass({
+        teacherId: user.uid,
+        classId: classItem.id,
+      });
+
+      setExpandedClassId((current) =>
+        current === classItem.id ? null : current,
+      );
+
+      showAlert({
+        type: "success",
+        title: "Sınıf silindi",
+        message: `"${classItem.name}" artık sınıflar listende görünmeyecek.`,
+      });
+    } catch (error: any) {
+      console.log("DELETE CLASS ERROR:", error);
+
+      showAlert({
+        type: "error",
+        title: "Sınıf silinemedi",
+        message: error?.message ?? "Bir sorun oluştu. Lütfen tekrar dene.",
+      });
+    } finally {
+      setDeletingClassId(null);
+    }
   }
 
   function openStudent(student: ClassStudent) {
@@ -298,6 +348,8 @@ export default function TeacherClassesScreen() {
                   }
                   onCopyJoinCode={copyJoinCode}
                   onOpenStudent={openStudent}
+                  onDeleteClass={requestDeleteClass}
+                  isDeleting={deletingClassId === classItem.id}
                   colors={colors}
                 />
               ))}
