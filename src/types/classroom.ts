@@ -1,3 +1,4 @@
+// src\types\classroom.ts
 import type { ProfileImageId } from "@/src/types/userProfile";
 import type { Timestamp } from "firebase/firestore";
 

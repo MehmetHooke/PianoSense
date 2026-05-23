@@ -1,11 +1,22 @@
+import { TeacherAttentionCard } from "@/src/components/teacher/home/TeacherAttentionCard";
+import { TeacherHomeHeader } from "@/src/components/teacher/home/TeacherHomeHeader";
+import { TeacherHomeHeroCard } from "@/src/components/teacher/home/TeacherHomeHeroCard";
+import { TeacherQuickActionsCard } from "@/src/components/teacher/home/TeacherQuickActionsCard";
+import { TeacherRecentActivityCard } from "@/src/components/teacher/home/TeacherRecentActivityCard";
+import { useTeacherHomeData } from "@/src/components/teacher/home/useTeacherHomeData";
 import { useUserProfile } from "@/src/hooks/useUserProfile";
 import { useAppTheme } from "@/src/theme/useTheme";
-import { Ionicons } from "@expo/vector-icons";
-import { ScrollView, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 
 export default function TeacherDashboardScreen() {
-  const { colors } = useAppTheme();
-  const { profile } = useUserProfile();
+  const router = useRouter();
+  const { colors, theme } = useAppTheme();
+  const { user, profile } = useUserProfile();
+
+  const { stats, recentActivities, loading, error } = useTeacherHomeData(
+    user?.uid,
+  );
 
   return (
     <ScrollView
@@ -17,159 +28,81 @@ export default function TeacherDashboardScreen() {
       }}
       showsVerticalScrollIndicator={false}
     >
-      <Text
-        style={{
-          color: colors.mutedText,
-          fontSize: 14,
-          fontWeight: "800",
-        }}
-      >
-        Öğretmen Paneli
-      </Text>
+      <TeacherHomeHeader colors={colors} teacherName={profile?.name} />
 
-      <Text
-        style={{
-          marginTop: 6,
-          color: colors.text,
-          fontSize: 30,
-          fontWeight: "900",
-          letterSpacing: -0.8,
-        }}
-      >
-        Merhaba {profile?.name ?? "Öğretmen"}
-      </Text>
-
-      <View
-        style={{
-          marginTop: 24,
-          backgroundColor: colors.card,
-          borderRadius: 28,
-          padding: 20,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 18,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: colors.primarySoft,
-            }}
-          >
-            <Ionicons name="analytics-outline" size={24} color={colors.primary} />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 18,
-                fontWeight: "900",
-              }}
-            >
-              Bugünkü Özet
-            </Text>
-
-            <Text
-              style={{
-                marginTop: 4,
-                color: colors.mutedText,
-                fontSize: 13,
-                fontWeight: "600",
-                lineHeight: 19,
-              }}
-            >
-              Öğrencilerinin çalışma ve analiz durumlarını buradan takip edeceksin.
-            </Text>
-          </View>
-        </View>
-
+      {error ? (
         <View
           style={{
-            marginTop: 20,
-            flexDirection: "row",
-            gap: 10,
+            marginTop: 18,
+            backgroundColor: colors.dangerSoft,
+            borderRadius: 20,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: colors.danger,
           }}
         >
-          <StatBox label="Sınıf" value="0" />
-          <StatBox label="Öğrenci" value="0" />
-          <StatBox label="Analiz" value="0" />
+          <Text
+            style={{
+              color: colors.dangerForeground,
+              fontSize: 13,
+              fontWeight: "800",
+              lineHeight: 18,
+            }}
+          >
+            Öğretmen paneli verileri alınırken bir sorun oluştu.
+          </Text>
         </View>
-      </View>
+      ) : null}
 
-      <View
-        style={{
-          marginTop: 18,
-          backgroundColor: colors.card,
-          borderRadius: 24,
-          padding: 18,
-          borderWidth: 1,
-          borderColor: colors.border,
-        }}
-      >
-        <Text
+      <TeacherHomeHeroCard
+        colors={colors}
+        classCount={stats.totalClassCount}
+        studentCount={stats.totalClassStudentCount}
+        analysisCount={stats.thisWeekAnalysisCount}
+        averageScore={stats.averageScore}
+        theme={theme}
+      />
+
+      {loading ? (
+        <View
           style={{
-            color: colors.text,
-            fontSize: 17,
-            fontWeight: "900",
+            marginTop: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          Hızlı işlemler
-        </Text>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text
+            style={{
+              color: colors.mutedText,
+              fontSize: 12,
+              fontWeight: "700",
+            }}
+          >
+            Panel verileri güncelleniyor...
+          </Text>
+        </View>
+      ) : null}
 
-        <Text
-          style={{
-            marginTop: 8,
-            color: colors.mutedText,
-            fontSize: 14,
-            fontWeight: "600",
-            lineHeight: 20,
-          }}
-        >
-          Sınıf oluşturma ve öğrenci kodu ile arama akışını burada başlatacağız.
-        </Text>
-      </View>
+      <TeacherQuickActionsCard
+        colors={colors}
+        onCreateClass={() => router.push("/(teacher)/classes")}
+        onFollowStudent={() => router.push("/(teacher)/students")}
+        onOpenStudents={() => router.push("/(teacher)/students")}
+      />
+
+      <TeacherRecentActivityCard
+        colors={colors}
+        theme={theme}
+        activities={recentActivities}
+      />
+
+      <TeacherAttentionCard
+        colors={colors}
+        followedStudentCount={stats.followedStudentCount}
+        thisWeekAnalysisCount={stats.thisWeekAnalysisCount}
+      />
     </ScrollView>
   );
-
-  function StatBox({ label, value }: { label: string; value: string }) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: colors.surface,
-          borderRadius: 18,
-          paddingVertical: 14,
-          alignItems: "center",
-          borderWidth: 1,
-          borderColor: colors.softBorder,
-        }}
-      >
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 22,
-            fontWeight: "900",
-          }}
-        >
-          {value}
-        </Text>
-
-        <Text
-          style={{
-            marginTop: 4,
-            color: colors.mutedText,
-            fontSize: 12,
-            fontWeight: "800",
-          }}
-        >
-          {label}
-        </Text>
-      </View>
-    );
-  }
 }

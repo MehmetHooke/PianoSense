@@ -1,22 +1,23 @@
+// src\services\classroomService.ts
 import { db } from "@/src/services/firebase";
 import type {
-    ClassStudent,
-    StudentClass,
-    TeacherClass,
+  ClassStudent,
+  StudentClass,
+  TeacherClass,
 } from "@/src/types/classroom";
 import type { UserProfile } from "@/src/types/userProfile";
 import {
-    collection,
-    doc,
-    getDocs,
-    increment,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    runTransaction,
-    serverTimestamp,
-    where,
+  collection,
+  doc,
+  getDocs,
+  increment,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  runTransaction,
+  serverTimestamp,
+  where,
 } from "firebase/firestore";
 
 const JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

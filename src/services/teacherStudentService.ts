@@ -1,16 +1,17 @@
+// src\services\teacherStudentService.ts
 import { db } from "@/src/services/firebase";
 import type { ProfileImageId, UserProfile } from "@/src/types/userProfile";
 import {
-    collection,
-    doc,
-    getDocs,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    setDoc,
-    where,
+  collection,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
 } from "firebase/firestore";
 
 export type FollowedStudent = {

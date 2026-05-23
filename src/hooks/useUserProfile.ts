@@ -1,3 +1,4 @@
+// src\hooks\useUserProfile.ts
 import { useAuth } from "@/src/context/AuthContext";
 import { listenUserProfile } from "@/src/services/userProfileService";
 import type { UserProfile } from "@/src/types/userProfile";
