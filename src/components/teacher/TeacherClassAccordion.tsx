@@ -1,12 +1,16 @@
 // src\components\teacher\TeacherClassAccordion.tsx
 import {
+  DEFAULT_PROFILE_IMAGE_ID,
+  getProfileImageSource,
+} from "@/src/constants/profileImages";
+import {
   listenClassStudents,
 } from "@/src/services/classroomService";
 import type { ClassStudent, TeacherClass } from "@/src/types/classroom";
 import { alpha } from "@/src/utils/color";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 
 type Props = {
@@ -14,6 +18,7 @@ type Props = {
   expanded: boolean;
   onPress: () => void;
   onCopyJoinCode: (joinCode: string) => void;
+  onOpenStudent: (student: ClassStudent) => void;
   colors: any;
 };
 
@@ -26,6 +31,7 @@ export function TeacherClassAccordion({
   expanded,
   onPress,
   onCopyJoinCode,
+  onOpenStudent,
   colors,
 }: Props) {
   const [students, setStudents] = useState<ClassStudent[]>([]);
@@ -226,67 +232,89 @@ export function TeacherClassAccordion({
               </Text>
             ) : (
               <View style={{ marginTop: 10, gap: 8 }}>
-                {students.map((student) => (
-                  <View
-                    key={student.studentId}
-                    style={{
-                      backgroundColor: colors.card,
-                      borderRadius: 16,
-                      padding: 12,
-                      borderWidth: 1,
-                      borderColor: colors.softBorder,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 14,
-                        backgroundColor: colors.primarySoft,
+                {students.map((student) => {
+                  const fullName =
+                    `${student.name ?? ""} ${student.surname ?? ""}`.trim() ||
+                    student.displayName ||
+                    "İsimsiz Öğrenci";
+
+                  const profileImageSource = getProfileImageSource(
+                    student.profileImageId ?? DEFAULT_PROFILE_IMAGE_ID,
+                  );
+
+                  return (
+                    <Pressable
+                      key={student.studentId}
+                      onPress={() => onOpenStudent(student)}
+                      style={({ pressed }) => ({
+                        backgroundColor: colors.card,
+                        borderRadius: 16,
+                        padding: 12,
+                        borderWidth: 1,
+                        borderColor: colors.softBorder,
+                        flexDirection: "row",
                         alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                        gap: 10,
+                        opacity: pressed ? 0.82 : 1,
+                        transform: [{ scale: pressed ? 0.99 : 1 }],
+                      })}
                     >
-                      <Text
+                      <View
                         style={{
-                          color: colors.primary,
-                          fontSize: 14,
-                          fontWeight: "900",
+                          width: 42,
+                          height: 42,
+                          borderRadius: 15,
+                          backgroundColor: colors.surface,
+                          borderWidth: 1,
+                          borderColor: colors.softBorder,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          overflow: "hidden",
                         }}
                       >
-                        {(student.displayName || "Ö").charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
+                        <Image
+                          source={profileImageSource}
+                          style={{
+                            width: 42,
+                            height: 42,
+                          }}
+                          
+                        />
+                      </View>
 
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: colors.text,
-                          fontSize: 14,
-                          fontWeight: "900",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {student.displayName}
-                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            color: colors.text,
+                            fontSize: 14,
+                            fontWeight: "900",
+                          }}
+                          numberOfLines={1}
+                        >
+                          {fullName}
+                        </Text>
 
-                      <Text
-                        style={{
-                          color: colors.mutedText,
-                          fontSize: 12,
-                          fontWeight: "700",
-                          marginTop: 2,
-                        }}
-                        numberOfLines={1}
-                      >
-                        Kod: {student.studentCode}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
+                        <Text
+                          style={{
+                            color: colors.mutedText,
+                            fontSize: 12,
+                            fontWeight: "700",
+                            marginTop: 2,
+                          }}
+                          numberOfLines={1}
+                        >
+                          Kod: {student.studentCode}
+                        </Text>
+                      </View>
+
+                      <Ionicons
+                        name="chevron-forward"
+                        size={18}
+                        color={colors.subtleText}
+                      />
+                    </Pressable>
+                  );
+                })}
               </View>
             )}
           </View>

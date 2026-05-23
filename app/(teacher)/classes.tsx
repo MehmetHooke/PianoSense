@@ -1,3 +1,4 @@
+// app\(teacher)\classes.tsx
 import { AuthGate } from "@/src/components/auth/AuthGate";
 import { TeacherClassAccordion, teacherClassAccordionTransition } from "@/src/components/teacher/TeacherClassAccordion";
 import { useAuth } from "@/src/context/AuthContext";
@@ -7,9 +8,10 @@ import {
   listenTeacherClasses,
 } from "@/src/services/classroomService";
 import { useAppTheme } from "@/src/theme/useTheme";
-import type { TeacherClass } from "@/src/types/classroom";
+import type { ClassStudent, TeacherClass } from "@/src/types/classroom";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,7 +26,7 @@ import Animated from "react-native-reanimated";
 export default function TeacherClassesScreen() {
   const { colors } = useAppTheme();
   const { user } = useAuth();
-  const {showAlert} = useAppAlert();
+  const { showAlert } = useAppAlert();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [className, setClassName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -80,9 +82,23 @@ export default function TeacherClassesScreen() {
   async function copyJoinCode(joinCode: string) {
     await Clipboard.setStringAsync(joinCode);
     showAlert({
-      type:"info",
-      title:"Kod kopyalandı", 
-      message:"Sınıf katılım kodu panoya kopyalandı."});
+      type: "info",
+      title: "Kod kopyalandı",
+      message: "Sınıf katılım kodu panoya kopyalandı."
+    });
+  }
+
+  function openStudent(student: ClassStudent) {
+    router.push({
+      pathname: "/student/[studentId]",
+      params: {
+        studentId: student.studentId,
+        name: student.name,
+        surname: student.surname,
+        displayName: student.displayName,
+        studentCode: student.studentCode,
+      },
+    });
   }
 
   return (
@@ -281,6 +297,7 @@ export default function TeacherClassesScreen() {
                     )
                   }
                   onCopyJoinCode={copyJoinCode}
+                  onOpenStudent={openStudent}
                   colors={colors}
                 />
               ))}

@@ -1,3 +1,4 @@
+// app\(teacher)\students.tsx
 import {
     DEFAULT_PROFILE_IMAGE_ID,
     getProfileImageSource,
@@ -24,6 +25,7 @@ export default function TeacherStudentsScreen() {
     const { user } = useAuth();
 
     const [studentCode, setStudentCode] = useState("");
+    const [studentSearchQuery, setStudentSearchQuery] = useState("");
     const [students, setStudents] = useState<FollowedStudent[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -83,6 +85,26 @@ export default function TeacherStudentsScreen() {
             },
         });
     }
+
+    const normalizedStudentSearchQuery = studentSearchQuery
+        .trim()
+        .toLocaleLowerCase("tr-TR");
+
+    const filteredStudents = normalizedStudentSearchQuery
+        ? students.filter((student) => {
+            const searchableText = [
+                student.name,
+                student.surname,
+                student.displayName,
+                `${student.name ?? ""} ${student.surname ?? ""}`,
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLocaleLowerCase("tr-TR");
+
+            return searchableText.includes(normalizedStudentSearchQuery);
+        })
+        : students;
 
     return (
         <ScrollView
@@ -240,7 +262,59 @@ export default function TeacherStudentsScreen() {
                 >
                     Takip edilen öğrenciler
                 </Text>
+                {students.length > 0 ? (
+                    <View
+                        style={{
+                            marginTop: 14,
+                            height: 48,
+                            borderRadius: 18,
+                            backgroundColor: colors.surface,
+                            borderWidth: 1,
+                            borderColor: colors.softBorder,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingHorizontal: 14,
+                            gap: 10,
+                        }}
+                    >
+                        <Ionicons
+                            name="search"
+                            size={18}
+                            color={colors.subtleText}
+                        />
 
+                        <TextInput
+                            value={studentSearchQuery}
+                            onChangeText={setStudentSearchQuery}
+                            placeholder="Öğrenci ara"
+                            placeholderTextColor={colors.subtleText}
+                            autoCorrect={false}
+                            style={{
+                                flex: 1,
+                                color: colors.text,
+                                fontSize: 14,
+                                fontWeight: "700",
+                                paddingVertical: 0,
+                            }}
+                        />
+
+                        {studentSearchQuery.trim() ? (
+                            <Pressable
+                                onPress={() => setStudentSearchQuery("")}
+                                hitSlop={10}
+                                style={({ pressed }) => ({
+                                    opacity: pressed ? 0.6 : 1,
+                                })}
+                            >
+                                <Ionicons
+                                    name="close-circle"
+                                    size={18}
+                                    color={colors.subtleText}
+                                />
+                            </Pressable>
+                        ) : null}
+                    </View>
+                ) : null}
                 {students.length === 0 ? (
                     <Text
                         style={{
@@ -254,9 +328,21 @@ export default function TeacherStudentsScreen() {
                         Henüz takip ettiğin öğrenci yok. Öğrenci kodu girerek ilk öğrencini
                         ekleyebilirsin.
                     </Text>
+                ) : filteredStudents.length === 0 ? (
+                    <Text
+                        style={{
+                            marginTop: 12,
+                            color: colors.mutedText,
+                            fontSize: 14,
+                            fontWeight: "600",
+                            lineHeight: 20,
+                        }}
+                    >
+                        Bu isimle eşleşen öğrenci bulunamadı.
+                    </Text>
                 ) : (
                     <View style={{ marginTop: 14, gap: 10 }}>
-                        {students.map((student) => {
+                        {filteredStudents.map((student) => {
                             const fullName =
                                 `${student.name ?? ""} ${student.surname ?? ""}`.trim() ||
                                 student.displayName ||
