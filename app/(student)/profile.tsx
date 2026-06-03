@@ -136,6 +136,8 @@ export default function ProfileScreen() {
 
   const shownStudentCode = profile?.studentCode ?? "------";
 
+   const ProfileRole = profile?.role === "teacher" ? "Öğretmen" : profile?.role === "student" ? "Öğrenci" : "Veli"
+
   const toggleSetting = (setting: Exclude<ExpandedSetting, null>) => {
     setExpandedSetting((prev) => (prev === setting ? null : setting));
   };
@@ -271,6 +273,7 @@ export default function ProfileScreen() {
           <ProfileSummaryCard
             displayName={profile?.displayName ?? user?.displayName}
             email={profile?.email ?? user?.email}
+            role={ProfileRole}
             profileImageSource={selectedProfileImageSource}
             onAvatarPress={() => setProfilePickerVisible(true)}
           />

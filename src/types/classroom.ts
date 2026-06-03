@@ -34,5 +34,6 @@ export type StudentClass = {
   className: string;
   joinCode: string;
   status: StudentClassStatus;
+  classStatus: ClassStatus;
   joinedAt?: Timestamp;
 };

@@ -18,8 +18,8 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 const JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -136,6 +136,7 @@ export function listenStudentClasses(
   const classesQuery = query(
     collection(db, "users", studentId, "classes"),
     where("status", "==", "active"),
+    where("classStatus", "==", "active"),
     orderBy("joinedAt", "desc"),
   );
 
@@ -151,6 +152,7 @@ export function listenStudentClasses(
           className: data.className ?? "İsimsiz Sınıf",
           joinCode: data.joinCode ?? "",
           status: data.status ?? "active",
+          classStatus: data.classStatus ?? "active",
           joinedAt: data.joinedAt,
         } as StudentClass;
       });
@@ -296,11 +298,11 @@ export async function joinClassByCode(params: {
         className: classData.name,
         joinCode: classData.joinCode,
         status: "active",
+        classStatus: classData.status ?? "active",
         joinedAt: now,
       },
       { merge: true },
     );
-
     transaction.set(
       followedStudentRef,
       {
@@ -328,6 +330,7 @@ export async function joinClassByCode(params: {
     className: classData.name,
     joinCode: classData.joinCode,
     status: "active",
+    classStatus: classData.status ?? "active",
   } as StudentClass;
 }
 
@@ -348,9 +351,41 @@ export async function deleteClass(params: {
     throw new Error("Bu sınıfı silme yetkin yok.");
   }
 
-  await updateDoc(classRef, {
+  const studentsSnapshot = await getDocs(
+    query(
+      collection(db, "classes", params.classId, "students"),
+      where("status", "==", "active"),
+    ),
+  );
+
+  const batch = writeBatch(db);
+  const now = serverTimestamp();
+
+  batch.update(classRef, {
     status: "archived",
-    updatedAt: serverTimestamp(),
-    archivedAt: serverTimestamp(),
+    updatedAt: now,
+    archivedAt: now,
   });
+
+  studentsSnapshot.docs.forEach((studentDoc) => {
+    const studentId = studentDoc.id;
+
+    const studentClassRef = doc(
+      db,
+      "users",
+      studentId,
+      "classes",
+      params.classId,
+    );
+
+    batch.set(
+      studentClassRef,
+      {
+        classStatus: "archived",
+      },
+      { merge: true },
+    );
+  });
+
+  await batch.commit();
 }

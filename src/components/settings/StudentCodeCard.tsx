@@ -42,7 +42,7 @@ export function StudentCodeCard({ studentCode }: Props) {
                         fontWeight: "900",
                     }}
                 >
-                    Öğrenci takip kodun
+                    ID
                 </Text>
 
                 <Text
@@ -54,8 +54,7 @@ export function StudentCodeCard({ studentCode }: Props) {
                         marginTop: 5,
                     }}
                 >
-                    İleride veli veya öğretmen bağlantısı için bu kod kullanılacak.
-                    Şimdilik tasarım ön izlemesi olarak gösteriliyor.
+                    Kopyala ve paylaş !
                 </Text>
 
                 <Pressable
@@ -145,8 +144,7 @@ export function StudentCodeCard({ studentCode }: Props) {
                         lineHeight: 18,
                     }}
                 >
-                    Bu kod ileride tek başına erişim vermeyecek. Takip isteği
-                    gönderilecek ve hesap sahibi onayladıktan sonra bağlantı kurulacak.
+                    Bu kod seni takip etmelerini sağlayacak
                 </Text>
             </View>
         </View>
