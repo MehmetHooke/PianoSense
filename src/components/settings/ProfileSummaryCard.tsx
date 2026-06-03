@@ -8,6 +8,7 @@ import { Image, Pressable, Text, View } from "react-native";
 type Props = {
   displayName?: string | null;
   email?: string | null;
+  role?:string| null;
   profileImageSource?: ImageSourcePropType;
   onAvatarPress?: () => void;
 };
@@ -20,6 +21,7 @@ function getInitial(displayName?: string | null, email?: string | null) {
 export function ProfileSummaryCard({
   displayName,
   email,
+  role,
   profileImageSource,
   onAvatarPress,
 }: Props) {
@@ -160,7 +162,7 @@ export function ProfileSummaryCard({
                 fontWeight: "900",
               }}
             >
-              Öğrenci hesabı
+              {role}
             </Text>
           </View>
         </View>

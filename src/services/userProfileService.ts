@@ -3,16 +3,16 @@
 import { DEFAULT_PROFILE_IMAGE_ID } from "@/src/constants/profileImages";
 import { db } from "@/src/services/firebase";
 import type {
-    ProfileImageId,
-    UserProfile,
-    UserRole,
+  ProfileImageId,
+  UserProfile,
+  UserRole,
 } from "@/src/types/userProfile";
 import {
-    doc,
-    onSnapshot,
-    serverTimestamp,
-    setDoc,
-    updateDoc,
+  doc,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 
 const USER_COLLECTION = "users";

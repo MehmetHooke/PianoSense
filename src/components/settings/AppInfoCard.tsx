@@ -66,7 +66,7 @@ export function AppInfoCard() {
               marginTop: 6,
             }}
           >
-            44 parça eklendi ses analizi başarısı yüksek düşük ses tonlu C4 ve B4 notalarını yakalamsı için kayıt cihazını ses cihazına yakın tutulması gerekiyor.
+            Öğretmen Rolü ve Sınıf işlemleri ekleniyor. Öğretmen için ayrı giriş yerine kayıt olurken öğretmen olarak kayıt olmaları yeterli olacaktır.Öğretmenler analiz yapamıyor.
           </Text>
 
           <View

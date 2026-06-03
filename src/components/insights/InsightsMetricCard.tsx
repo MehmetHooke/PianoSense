@@ -61,7 +61,7 @@ export function InsightsMetricCard({
 
       <Text
         style={{
-          color: colors.warning,
+          color: colors.primary,
           fontSize: 13,
           fontWeight: "800",
           marginTop: 3,
