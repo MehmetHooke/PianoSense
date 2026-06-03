@@ -35,6 +35,9 @@ function getTabIcon(routeName: string, focused: boolean) {
     case "students":
       return focused ? "school" : "school-outline";
 
+    case "overview":
+      return focused ? "happy" : "heart-outline";
+
     case "profile":
       return focused ? "person" : "person-outline";
 
