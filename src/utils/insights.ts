@@ -1,3 +1,4 @@
+// src\utils\insights.ts
 import type { AnalysisJob } from "@/src/types/analysisJob";
 
 export type WeakArea = "pitch" | "timing" | "missed" | "extra" | "none";
