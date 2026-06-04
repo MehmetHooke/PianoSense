@@ -5,14 +5,14 @@ import { Link, router } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function LoginScreen() {
@@ -36,7 +36,7 @@ export default function LoginScreen() {
 
       await signInWithEmailAndPassword(auth, email.trim(), password);
     } catch (error) {
-      console.error("LOGIN ERROR:", error);
+      
       setErrorMessage("Giriş yapılamadı. E-posta veya şifreyi kontrol edin.");
     } finally {
       setLoading(false);

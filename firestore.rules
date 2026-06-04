@@ -2,13 +2,450 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function userDoc(userId) {
+      return get(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function hasUserDoc(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function myRole() {
+      return isSignedIn() && hasUserDoc(request.auth.uid)
+        ? userDoc(request.auth.uid).data.role
+        : null;
+    }
+
+    function isTeacher() {
+      return isSignedIn() && myRole() == "teacher";
+    }
+
+    function isStudent() {
+      return isSignedIn() && myRole() == "student";
+    }
+
+    function isParent() {
+      return isSignedIn() && myRole() == "parent";
+    }
+
+    function isFollowedByTeacher(studentId) {
+      return isTeacher()
+        && exists(/databases/$(database)/documents/teachers/$(request.auth.uid)/followedStudents/$(studentId))
+        && get(/databases/$(database)/documents/teachers/$(request.auth.uid)/followedStudents/$(studentId)).data.status == "active";
+    }
+
+    function isApprovedParentOfStudent(studentId) {
+      return isParent()
+        && exists(/databases/$(database)/documents/parents/$(request.auth.uid)/children/$(studentId))
+        && get(/databases/$(database)/documents/parents/$(request.auth.uid)/children/$(studentId)).data.status == "approved";
+    }
+
+    function isClassTeacher(classId) {
+      return isTeacher()
+        && exists(/databases/$(database)/documents/classes/$(classId))
+        && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+
+    function isClassStudent(classId) {
+      return isStudent()
+        && exists(/databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid))
+        && get(/databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid)).data.status == "active";
+    }
+
+    function followedStudentAllowedKeys() {
+      return [
+        "studentId",
+        "studentCode",
+        "displayName",
+        "name",
+        "surname",
+        "profileImageId",
+        "status",
+        "addedAt"
+      ];
+    }
+
+    function classStudentAllowedKeys() {
+      return [
+        "studentId",
+        "studentCode",
+        "displayName",
+        "name",
+        "surname",
+        "profileImageId",
+        "status",
+        "joinedAt"
+      ];
+    }
+
+    function studentClassAllowedKeys() {
+      return [
+        "classId",
+        "teacherId",
+        "className",
+        "joinCode",
+        "status",
+        "classStatus",
+        "joinedAt"
+      ];
+    }
+
+    function parentChildAllowedKeys() {
+      return [
+        "parentId",
+        "studentId",
+        "studentCode",
+        "displayName",
+        "name",
+        "surname",
+        "profileImageId",
+        "status",
+        "requestedAt",
+        "approvedAt",
+        "linkedAt",
+        "rejectedAt",
+        "removedAt"
+      ];
+    }
+
+    function parentLinkAllowedKeys() {
+      return [
+        "id",
+        "parentId",
+        "studentId",
+        "studentCode",
+        "displayName",
+        "name",
+        "surname",
+        "profileImageId",
+        "status",
+        "requestedAt",
+        "approvedAt",
+        "linkedAt",
+        "rejectedAt",
+        "removedAt"
+      ];
+    }
+
+    function studentParentLinkAllowedKeys() {
+      return [
+        "id",
+        "parentId",
+        "studentId",
+        "status",
+        "requestedAt",
+        "approvedAt",
+        "linkedAt",
+        "rejectedAt",
+        "removedAt"
+      ];
+    }
+
     match /songs/{songId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
+
+      // Şimdilik seed/demo için açık.
+      // Production'da admin/function tarafına almak daha doğru.
       allow write: if true;
     }
 
+    match /users/{userId} {
+      allow read: if isOwner(userId)
+        || (
+          isTeacher()
+          && resource.data.role == "student"
+          && resource.data.studentCode is string
+        )
+        || (
+          isParent()
+          && resource.data.role == "student"
+          && resource.data.studentCode is string
+        );
+
+      allow create: if isOwner(userId);
+
+      allow update: if isOwner(userId);
+
+      allow delete: if false;
+
+      match /classes/{classId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isStudent()
+          && request.resource.data.keys().hasOnly(studentClassAllowedKeys())
+          && request.resource.data.classId == classId
+          && request.resource.data.teacherId is string
+          && request.resource.data.className is string
+          && request.resource.data.joinCode is string
+          && request.resource.data.status == "active"
+          && request.resource.data.classStatus == "active";
+
+        allow update: if (
+          isOwner(userId)
+          && request.resource.data.keys().hasOnly(studentClassAllowedKeys())
+          && request.resource.data.classId == resource.data.classId
+          && request.resource.data.teacherId == resource.data.teacherId
+          && request.resource.data.className == resource.data.className
+          && request.resource.data.joinCode == resource.data.joinCode
+          && request.resource.data.classStatus == resource.data.classStatus
+          && request.resource.data.status in ["active", "left"]
+        ) || (
+          isClassTeacher(classId)
+          && request.resource.data.keys().hasOnly(studentClassAllowedKeys())
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "classStatus"
+          ])
+          && request.resource.data.classStatus in ["active", "archived"]
+        );
+
+        allow delete: if false;
+      }
+
+      match /parentLinks/{parentId} {
+        allow read: if isOwner(userId)
+          || (
+            isOwner(parentId)
+            && isParent()
+          );
+
+        allow create: if isOwner(parentId)
+          && isParent()
+          && request.resource.data.keys().hasOnly(studentParentLinkAllowedKeys())
+          && request.resource.data.parentId == parentId
+          && request.resource.data.studentId == userId
+          && request.resource.data.status in ["pending", "approved"];
+
+        allow update: if (
+          isOwner(parentId)
+          && isParent()
+          && request.resource.data.keys().hasOnly(studentParentLinkAllowedKeys())
+          && request.resource.data.parentId == resource.data.parentId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.status in ["pending", "approved", "removed"]
+        ) || (
+          isOwner(userId)
+          && isStudent()
+          && request.resource.data.keys().hasOnly(studentParentLinkAllowedKeys())
+          && request.resource.data.parentId == resource.data.parentId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.status in ["approved", "rejected"]
+        );
+
+        allow delete: if false;
+      }
+    }
+
+    match /parents/{parentId} {
+      allow read: if isOwner(parentId) && isParent();
+
+      allow create: if isOwner(parentId) && isParent();
+
+      allow update: if isOwner(parentId) && isParent();
+
+      allow delete: if false;
+
+      match /children/{studentId} {
+        allow read: if isOwner(parentId) && isParent();
+
+        allow create: if isOwner(parentId)
+          && isParent()
+          && request.resource.data.keys().hasOnly(parentChildAllowedKeys())
+          && request.resource.data.parentId == parentId
+          && request.resource.data.studentId == studentId
+          && request.resource.data.studentCode is string
+          && request.resource.data.displayName is string
+          && request.resource.data.status in ["pending", "approved"];
+
+        allow update: if isOwner(parentId)
+          && isParent()
+          && request.resource.data.keys().hasOnly(parentChildAllowedKeys())
+          && request.resource.data.parentId == resource.data.parentId
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.studentCode == resource.data.studentCode
+          && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.status in ["pending", "approved", "removed"];
+
+        allow delete: if false;
+      }
+    }
+
+    match /parentLinks/{linkId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.parentId == request.auth.uid
+          || resource.data.studentId == request.auth.uid
+        );
+
+      allow create: if isParent()
+        && request.resource.data.keys().hasOnly(parentLinkAllowedKeys())
+        && request.resource.data.parentId == request.auth.uid
+        && request.resource.data.studentId is string
+        && request.resource.data.studentCode is string
+        && request.resource.data.displayName is string
+        && request.resource.data.status in ["pending", "approved"];
+
+      allow update: if isSignedIn()
+        && request.resource.data.keys().hasOnly(parentLinkAllowedKeys())
+        && request.resource.data.parentId == resource.data.parentId
+        && request.resource.data.studentId == resource.data.studentId
+        && (
+          (
+            isParent()
+            && resource.data.parentId == request.auth.uid
+            && request.resource.data.status in ["pending", "approved", "removed"]
+          )
+          ||
+          (
+            isStudent()
+            && resource.data.studentId == request.auth.uid
+            && request.resource.data.status in ["approved", "rejected"]
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /teachers/{teacherId} {
+      allow read: if isOwner(teacherId) && isTeacher();
+
+      allow create: if isOwner(teacherId) && isTeacher();
+
+      allow update: if isOwner(teacherId) && isTeacher();
+
+      allow delete: if false;
+
+      match /followedStudents/{studentId} {
+        allow read: if isOwner(teacherId) && isTeacher();
+
+        // 1. Öğretmen öğrenci kodu ile manuel takip edebilir.
+        // 2. Öğrenci sınıfa katılırken kendisini öğretmenin takip listesine ekleyebilir.
+        // MVP için bu ikinci izin açık. Production'da bunu Cloud Function'a taşımak daha güvenli.
+        allow create: if (
+          isOwner(teacherId)
+          && isTeacher()
+          && request.resource.data.keys().hasOnly(followedStudentAllowedKeys())
+          && request.resource.data.studentId == studentId
+          && request.resource.data.studentCode is string
+          && request.resource.data.displayName is string
+          && request.resource.data.status == "active"
+        ) || (
+          isOwner(studentId)
+          && isStudent()
+          && request.resource.data.keys().hasOnly(followedStudentAllowedKeys())
+          && request.resource.data.studentId == studentId
+          && request.resource.data.studentCode is string
+          && request.resource.data.displayName is string
+          && request.resource.data.status == "active"
+        );
+
+        allow update: if (
+          isOwner(teacherId)
+          && isTeacher()
+          && request.resource.data.keys().hasOnly(followedStudentAllowedKeys())
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.studentCode == resource.data.studentCode
+          && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.status in ["active", "removed"]
+        ) || (
+          isOwner(studentId)
+          && isStudent()
+          && request.resource.data.keys().hasOnly(followedStudentAllowedKeys())
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.studentCode == resource.data.studentCode
+          && request.resource.data.displayName == resource.data.displayName
+          && request.resource.data.status == "active"
+        );
+
+        allow delete: if false;
+      }
+    }
+
+    match /classes/{classId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.teacherId == request.auth.uid
+          || isStudent()
+          || isTeacher()
+        );
+
+      allow create: if isTeacher()
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.joinCode is string
+        && request.resource.data.status == "active";
+
+      allow update: if (
+        isTeacher()
+        && resource.data.teacherId == request.auth.uid
+      ) || (
+        isStudent()
+        && resource.data.status == "active"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "studentCount",
+          "updatedAt"
+        ])
+        && request.resource.data.studentCount == resource.data.studentCount + 1
+        && existsAfter(
+          /databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid)
+        )
+        && getAfter(
+          /databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid)
+        ).data.status == "active"
+      );
+
+      allow delete: if false;
+
+      match /students/{studentId} {
+        allow read: if isClassTeacher(classId) || isOwner(studentId);
+
+        allow create: if isOwner(studentId)
+          && isStudent()
+          && request.resource.data.keys().hasOnly(classStudentAllowedKeys())
+          && request.resource.data.studentId == studentId
+          && request.resource.data.studentCode is string
+          && request.resource.data.displayName is string
+          && request.resource.data.status == "active";
+
+        allow update: if isClassTeacher(classId)
+          || (
+            isOwner(studentId)
+            && request.resource.data.keys().hasOnly(classStudentAllowedKeys())
+            && request.resource.data.studentId == resource.data.studentId
+            && request.resource.data.studentCode == resource.data.studentCode
+            && request.resource.data.displayName == resource.data.displayName
+            && request.resource.data.status in ["active", "removed"]
+          );
+
+        allow delete: if false;
+      }
+    }
+
     match /analysisJobs/{jobId} {
-      allow read, write: if request.auth != null;
+      allow read: if isSignedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || resource.data.teacherId == request.auth.uid
+          || isTeacher()
+          || isApprovedParentOfStudent(resource.data.userId)
+        );
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow delete: if false;
     }
   }
 }

@@ -1,11 +1,12 @@
+// src\components\settings\SettingsSectionAccordion.tsx
 import { Ionicons } from "@expo/vector-icons";
 import type React from "react";
 import {
-    Image,
-    type ImageSourcePropType,
-    Pressable,
-    Text,
-    View,
+  Image,
+  type ImageSourcePropType,
+  Pressable,
+  Text,
+  View,
 } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 

@@ -8,7 +8,7 @@ import { Image, Pressable, Text, View } from "react-native";
 type Props = {
   displayName?: string | null;
   email?: string | null;
-  role?:string| null;
+  role?: string | null;
   profileImageSource?: ImageSourcePropType;
   onAvatarPress?: () => void;
 };
@@ -153,7 +153,17 @@ export function ProfileSummaryCard({
               borderColor: colors.softBorder,
             }}
           >
-            <Ionicons name="school" size={14} color={colors.primary} />
+            <Ionicons
+              name={
+                role === "Öğretmen"
+                  ? "school"
+                  : role === "Öğrenci"
+                    ? "musical-notes"
+                    : "people"
+              }
+              size={14}
+              color={colors.primary}
+            />
 
             <Text
               style={{
