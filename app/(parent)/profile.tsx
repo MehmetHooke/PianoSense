@@ -1,315 +1,287 @@
+// app/(parent)/profile.tsx
+
+import { ParentChildLinkCard } from "@/src/components/parent/ParentChildLinkCard";
+import { AppInfoCard } from "@/src/components/settings/AppInfoCard";
+import { ProfileImagePickerModal } from "@/src/components/settings/ProfileImagePickerModal";
+import { ProfileSummaryCard } from "@/src/components/settings/ProfileSummaryCard";
+import { SettingsSectionAccordion } from "@/src/components/settings/SettingsSectionAccordion";
+import { ThemeSettingsCard } from "@/src/components/settings/ThemeSettingsCard";
+import {
+  DEFAULT_PROFILE_IMAGE_ID,
+  getProfileImageSource,
+} from "@/src/constants/profileImages";
 import { useAuth } from "@/src/context/AuthContext";
 import { auth } from "@/src/services/firebase";
+import {
+  listenUserProfile,
+  updateUserProfileImage,
+} from "@/src/services/userProfileService";
 import { useAppTheme } from "@/src/theme/useTheme";
+import type { ProfileImageId, UserProfile } from "@/src/types/userProfile";
 import { alpha } from "@/src/utils/color";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+} from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const themeImage = require("@/src/assets/images/profile/solar-eclipse.png");
+
+type ExpandedSetting = "childLink" | "theme" | null;
+
+const settingsLayoutTransition = LinearTransition.springify()
+  .damping(45)
+  .stiffness(200);
 
 export default function ParentProfileScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ open?: string }>();
+  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
   const { user } = useAuth();
-  const { colors, theme, setTheme } = useAppTheme();
 
-  const displayName = user?.displayName || "Veli hesabı";
-  const email = user?.email || "E-posta bilgisi yok";
+  const [expandedSetting, setExpandedSetting] =
+    useState<ExpandedSetting>(null);
 
-  async function handleLogout() {
-    await signOut(auth);
-  }
-
-  return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{
-        paddingTop: 56,
-        paddingHorizontal: 20,
-        paddingBottom: 120,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={{ marginBottom: 22 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 30,
-            fontWeight: "900",
-            letterSpacing: -0.8,
-          }}
-        >
-          Profil
-        </Text>
-
-        <Text
-          style={{
-            color: colors.mutedText,
-            fontSize: 14,
-            fontWeight: "600",
-            lineHeight: 21,
-            marginTop: 8,
-          }}
-        >
-          Hesap ayarlarını ve çocuk bağlantılarını buradan yönetebilirsin.
-        </Text>
-      </View>
-
-      <View
-        style={{
-          backgroundColor: colors.card,
-          borderRadius: 30,
-          padding: 20,
-          borderWidth: 1,
-          borderColor: colors.softBorder,
-          marginBottom: 18,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
-          <View
-            style={{
-              width: 58,
-              height: 58,
-              borderRadius: 22,
-              backgroundColor: alpha(colors.primary, 0.12),
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons name="person-outline" size={27} color={colors.primary} />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 19,
-                fontWeight: "900",
-                letterSpacing: -0.3,
-              }}
-            >
-              {displayName}
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              style={{
-                color: colors.mutedText,
-                fontSize: 13,
-                fontWeight: "700",
-                marginTop: 4,
-              }}
-            >
-              {email}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={{ gap: 12 }}>
-        <SettingsCard
-          colors={colors}
-          iconName="person-add-outline"
-          title="Çocuk bağlantısı ekle"
-          description="Çocuğunun takip kodu ile bağlantı isteği gönder."
-        />
-
-        <SettingsCard
-          colors={colors}
-          iconName="people-outline"
-          title="Bağlı çocuklar"
-          description="Takip ettiğin çocukları ve bağlantı durumlarını gör."
-        />
-
-        <Pressable
-          onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
-          style={({ pressed }) => ({
-            backgroundColor: colors.card,
-            borderRadius: 24,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: pressed ? colors.primary : colors.softBorder,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-          })}
-        >
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 17,
-              backgroundColor: alpha(colors.primary, 0.1),
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name={theme === "dark" ? "moon-outline" : "sunny-outline"}
-              size={22}
-              color={colors.primary}
-            />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 15,
-                fontWeight: "900",
-              }}
-            >
-              Tema
-            </Text>
-
-            <Text
-              style={{
-                color: colors.mutedText,
-                fontSize: 13,
-                fontWeight: "600",
-                lineHeight: 19,
-                marginTop: 3,
-              }}
-            >
-              Şu an {theme === "dark" ? "koyu" : "açık"} tema kullanılıyor.
-            </Text>
-          </View>
-
-          <Ionicons
-            name="chevron-forward-outline"
-            size={20}
-            color={colors.subtleText}
-          />
-        </Pressable>
-
-        <Pressable
-          onPress={handleLogout}
-          style={({ pressed }) => ({
-            backgroundColor: pressed
-              ? alpha(colors.danger, 0.14)
-              : alpha(colors.danger, 0.09),
-            borderRadius: 24,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: alpha(colors.danger, 0.18),
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 14,
-          })}
-        >
-          <View
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 17,
-              backgroundColor: alpha(colors.danger, 0.12),
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons name="log-out-outline" size={22} color={colors.danger} />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                color: colors.danger,
-                fontSize: 15,
-                fontWeight: "900",
-              }}
-            >
-              Çıkış yap
-            </Text>
-
-            <Text
-              style={{
-                color: colors.mutedText,
-                fontSize: 13,
-                fontWeight: "600",
-                lineHeight: 19,
-                marginTop: 3,
-              }}
-            >
-              Bu cihazdaki oturumu kapat.
-            </Text>
-          </View>
-        </Pressable>
-      </View>
-    </ScrollView>
+  useFocusEffect(
+    useCallback(() => {
+      if (params.open === "childLink") {
+        setExpandedSetting("childLink");
+      }
+    }, [params.open]),
   );
-}
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profilePickerVisible, setProfilePickerVisible] = useState(false);
+  const [profileImageSaving, setProfileImageSaving] = useState(false);
 
-type ParentProfileColors = ReturnType<typeof useAppTheme>["colors"];
+  useEffect(() => {
+    if (!user?.uid) {
+      setProfile(null);
+      return;
+    }
 
-function SettingsCard({
-  colors,
-  iconName,
-  title,
-  description,
-}: {
-  colors: ParentProfileColors;
-  iconName: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-}) {
+    const unsubscribe = listenUserProfile(user.uid, setProfile, (error) => {
+      console.log("USER PROFILE LISTEN ERROR:", error);
+    });
+
+    return unsubscribe;
+  }, [user?.uid]);
+
+  const selectedProfileImageId =
+    profile?.profileImageId ?? DEFAULT_PROFILE_IMAGE_ID;
+
+  const selectedProfileImageSource = useMemo(
+    () => getProfileImageSource(selectedProfileImageId),
+    [selectedProfileImageId],
+  );
+
+  const toggleSetting = (setting: Exclude<ExpandedSetting, null>) => {
+    setExpandedSetting((prev) => (prev === setting ? null : setting));
+  };
+
+  const handleSelectProfileImage = async (profileImageId: ProfileImageId) => {
+    if (!user?.uid) {
+      return;
+    }
+
+    if (profileImageId === selectedProfileImageId) {
+      setProfilePickerVisible(false);
+      return;
+    }
+
+    try {
+      setProfileImageSaving(true);
+
+      await updateUserProfileImage({
+        uid: user.uid,
+        profileImageId,
+      });
+
+      setProfilePickerVisible(false);
+    } catch (error) {
+      console.log("UPDATE PROFILE IMAGE ERROR:", error);
+
+      Alert.alert(
+        "Profil resmi değiştirilemedi",
+        "Profil resmin kaydedilirken bir sorun oluştu. Lütfen tekrar dene.",
+      );
+    } finally {
+      setProfileImageSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      await signOut(auth);
+      router.replace("/auth/login");
+    } catch (error) {
+      console.log("Logout error:", error);
+
+      Alert.alert(
+        "Çıkış yapılamadı",
+        "Hesabından çıkış yapılırken bir sorun oluştu. Lütfen tekrar dene.",
+      );
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
+
   return (
-    <Pressable
-      style={({ pressed }) => ({
-        backgroundColor: colors.card,
-        borderRadius: 24,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: pressed ? colors.primary : colors.softBorder,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-      })}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{
+        flex: 1,
+        backgroundColor: colors.background,
+      }}
     >
-      <View
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: 17,
-          backgroundColor: alpha(colors.primary, 0.1),
-          alignItems: "center",
-          justifyContent: "center",
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 18,
+          paddingTop: 40,
+          paddingBottom: Math.max(insets.bottom, 12) + 120,
+          gap: 16,
         }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Ionicons name={iconName} size={22} color={colors.primary} />
-      </View>
+        <Animated.View layout={settingsLayoutTransition}>
+          <Text
+            style={{
+              color: colors.text,
+              fontSize: 30,
+              fontWeight: "900",
+              letterSpacing: 1.8,
+            }}
+          >
+            Profil
+          </Text>
 
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 15,
-            fontWeight: "900",
-          }}
+          <Text
+            style={{
+              color: colors.mutedText,
+              fontSize: 14,
+              fontWeight: "600",
+              lineHeight: 21,
+              marginTop: 5,
+            }}
+          >
+            Hesap bilgilerini görüntüle, çocuk bağlantılarını yönet ve uygulama
+            görünümünü kişiselleştir.
+          </Text>
+        </Animated.View>
+
+        <Animated.View layout={settingsLayoutTransition}>
+          <ProfileSummaryCard
+            displayName={profile?.displayName ?? user?.displayName}
+            email={profile?.email ?? user?.email}
+            role="Veli"
+            profileImageSource={selectedProfileImageSource}
+            onAvatarPress={() => setProfilePickerVisible(true)}
+          />
+        </Animated.View>
+
+        <SettingsSectionAccordion
+          title="Çocuk bağlantısı"
+          description="Öğrenci kodu ile çocuğunu veli paneline ekle."
+          iconName="people-outline"
+          iconColor={colors.primary}
+          iconBackgroundColor={colors.primarySoft}
+          iconBorderColor={alpha(colors.primary, 0.18)}
+          expanded={expandedSetting === "childLink"}
+          onPress={() => toggleSetting("childLink")}
+          colors={colors}
         >
-          {title}
-        </Text>
+          <ParentChildLinkCard colors={colors} parentId={user?.uid} />
+        </SettingsSectionAccordion>
 
-        <Text
-          style={{
-            color: colors.mutedText,
-            fontSize: 13,
-            fontWeight: "600",
-            lineHeight: 19,
-            marginTop: 3,
-          }}
+        <SettingsSectionAccordion
+          title="Tema"
+          description="Uygulama görünümünü açık veya koyu tema olarak değiştir."
+          iconSource={themeImage}
+          iconBackgroundColor={colors.primarySoft}
+          iconBorderColor={alpha(colors.primary, 0.18)}
+          expanded={expandedSetting === "theme"}
+          onPress={() => toggleSetting("theme")}
+          colors={colors}
         >
-          {description}
-        </Text>
-      </View>
+          <ThemeSettingsCard />
+        </SettingsSectionAccordion>
 
-      <Ionicons
-        name="chevron-forward-outline"
-        size={20}
-        color={colors.subtleText}
+        <Animated.View layout={settingsLayoutTransition}>
+          <AppInfoCard />
+        </Animated.View>
+
+        <Animated.View layout={settingsLayoutTransition}>
+          <Pressable
+            onPress={handleLogout}
+            disabled={logoutLoading}
+            style={({ pressed }) => ({
+              backgroundColor: colors.danger,
+              borderRadius: 20,
+              paddingVertical: 15,
+              paddingHorizontal: 16,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: 9,
+              opacity: pressed || logoutLoading ? 0.86 : 1,
+              transform: [{ scale: pressed ? 0.99 : 1 }],
+              shadowColor: colors.shadow,
+              shadowOpacity: 0.06,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 2,
+            })}
+          >
+            {logoutLoading ? (
+              <ActivityIndicator color={colors.primaryForeground} />
+            ) : (
+              <>
+                <Ionicons
+                  name="log-out-outline"
+                  size={20}
+                  color={colors.primaryForeground}
+                />
+
+                <Text
+                  style={{
+                    color: colors.primaryForeground,
+                    fontSize: 15,
+                    fontWeight: "900",
+                  }}
+                >
+                  Çıkış yap
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </Animated.View>
+      </ScrollView>
+
+      <ProfileImagePickerModal
+        visible={profilePickerVisible}
+        selectedImageId={selectedProfileImageId}
+        saving={profileImageSaving}
+        onClose={() => {
+          if (!profileImageSaving) {
+            setProfilePickerVisible(false);
+          }
+        }}
+        onSelect={handleSelectProfileImage}
       />
-    </Pressable>
+    </KeyboardAvoidingView>
   );
 }

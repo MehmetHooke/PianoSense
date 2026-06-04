@@ -1,3 +1,4 @@
+// src\components\settings\ThemeSettingsCard.tsx
 import { useAppTheme } from "@/src/theme/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
