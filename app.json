@@ -4,50 +4,61 @@
     "slug": "pianosense",
     "version": "1.0.0",
     "orientation": "portrait",
+
     "icon": "./assets/images/icon.png",
+
     "scheme": "pianosense",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.piyanomlabasbasa.app"
+      "bundleIdentifier": "com.piyanomlabasbasa.app",
+      "icon": "./assets/images/icon.png"
     },
+
     "android": {
+      "package": "com.piyanomlabasbasa.app",
+
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#F8F7FF"
       },
+
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
+
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+
     "plugins": [
       "expo-router",
+
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#F8F7FF",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#09090B"
           }
         }
       ],
+
       [
         "expo-audio",
         {
-          "microphonePermission": "PianoSense kayıt alabilmek için mikrofon erişimine ihtiyaç duyar.",
+          "microphonePermission": "Piyanomla Baş Başa kayıt alabilmek için mikrofon erişimine ihtiyaç duyar.",
           "recordAudioAndroid": true
         }
       ]
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
