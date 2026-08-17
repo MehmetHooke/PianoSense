@@ -9,6 +9,7 @@ import { OriginalAudioCard } from "@/src/components/recording/OriginalAudioCard"
 import { RecordingHeader } from "@/src/components/recording/RecordingHeader";
 import { RecordingReadyCard } from "@/src/components/recording/RecordingReadyCard";
 import { SendToAnalysisButton } from "@/src/components/recording/SendToAnalysisButton";
+import { getExerciseTitle } from "@/src/constants/exerciseNames";
 import { useAuth } from "@/src/context/AuthContext";
 import { useAppAlert } from "@/src/hooks/useAppAlert";
 import { submitRecordingForAnalysis } from "@/src/services/analysisSubmissionService";
@@ -784,9 +785,9 @@ function RecordingScreenContent() {
             }}
         >
             <RecordingHeader
-                title={song?.title ?? "Egzersiz"}
+                title={getExerciseTitle(song?.order)}
                 description={song?.description}
-                isDark={theme === "dark" ? true : false}
+                isDark={theme === "dark"}
                 onBackPress={handleBackPress}
                 colors={colors}
             />
