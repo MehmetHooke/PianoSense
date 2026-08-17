@@ -12,9 +12,7 @@
     "newArchEnabled": true,
 
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.piyanomlabasbasa.app",
-      "icon": "./assets/images/icon.png"
+      "supportsTablet": true
     },
 
     "android": {
@@ -26,7 +24,11 @@
       },
 
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
 
     "web": {
@@ -56,7 +58,9 @@
           "microphonePermission": "Piyanomla Baş Başa kayıt alabilmek için mikrofon erişimine ihtiyaç duyar.",
           "recordAudioAndroid": true
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
 
     "experiments": {

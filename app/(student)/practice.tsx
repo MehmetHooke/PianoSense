@@ -33,7 +33,7 @@ function formatDuration(durationSec?: number) {
 
 function getExerciseTitle(song: Song, index: number) {
   const order = song.order ?? index + 1;
-  return `Egzersiz ${order}`;
+  return `Ezgi ${order}`;
 }
 
 export default function PracticeScreen() {
