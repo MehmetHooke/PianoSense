@@ -81,7 +81,7 @@ export function AuthLoadingScreen() {
           marginBottom: 8,
         }}
       >
-        PianoSense
+        Pianomla Baş Başa
       </Text>
 
       <Text

@@ -83,7 +83,7 @@ export default function LoginScreen() {
                   textAlign: "center",
                 }}
               >
-                PianoSense’e hoş geldin
+                Pianomla Baş Başa'ya hoş geldin
               </Text>
 
               <Text

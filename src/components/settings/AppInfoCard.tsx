@@ -54,7 +54,7 @@ export function AppInfoCard() {
               fontWeight: "900",
             }}
           >
-            PianoSense
+            Pianomla Baş Başa
           </Text>
 
           <Text
