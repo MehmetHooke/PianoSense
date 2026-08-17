@@ -12,7 +12,11 @@
     "newArchEnabled": true,
 
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.piyanomlabasbasa.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
 
     "android": {
