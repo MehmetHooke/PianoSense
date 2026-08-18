@@ -13,8 +13,8 @@ import type { AnalysisJob } from "@/src/types/analysisJob";
 import type { ParentLinkedChild } from "@/src/types/parent";
 import { calculateInsightsSummary } from "@/src/utils/insights";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 
 function toDate(value: unknown): Date | null {
@@ -86,30 +86,32 @@ export default function ParentHomeScreen() {
   const parentName = user?.displayName || "Veli";
   const { profile } = useUserProfile();
 
-  useEffect(() => {
-    if (!user?.uid) {
-      setChildren([]);
-      setChildrenLoading(false);
-      return;
-    }
-
-    setChildrenLoading(true);
-
-    const unsubscribe = listenParentChildren(
-      user.uid,
-      (items) => {
-        setChildren(items);
-        setChildrenLoading(false);
-      },
-      (error) => {
-        console.log("PARENT CHILDREN LISTEN ERROR:", error);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.uid) {
         setChildren([]);
         setChildrenLoading(false);
-      },
-    );
+        return;
+      }
 
-    return unsubscribe;
-  }, [user?.uid]);
+      setChildrenLoading(true);
+
+      const unsubscribe = listenParentChildren(
+        user.uid,
+        (items) => {
+          setChildren(items);
+          setChildrenLoading(false);
+        },
+        (error) => {
+          console.log("PARENT CHILDREN LISTEN ERROR:", error);
+          setChildren([]);
+          setChildrenLoading(false);
+        },
+      );
+
+      return unsubscribe;
+    }, [user?.uid]),
+  );
 
   const firstChild = children[0];
   const hasLinkedChild = children.length > 0;
