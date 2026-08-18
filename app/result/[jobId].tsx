@@ -8,6 +8,7 @@ import { ResultNoteDetailItem } from "@/src/components/result/ResultNoteDetailIt
 import { ResultScoreBreakdown } from "@/src/components/result/ResultScoreBreakdown";
 import { ResultStateView } from "@/src/components/result/ResultStateView";
 import { ResultTopBar } from "@/src/components/result/ResultTopBar";
+import { getExerciseTitle } from "@/src/constants/exerciseNames";
 import { getAnalysisJobById } from "@/src/services/analysisJobService";
 import { getSongById } from "@/src/services/songService";
 import { useAppTheme } from "@/src/theme/useTheme";
@@ -47,6 +48,8 @@ function ResultScreenContent() {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+
 
   const resultSoundAttemptedRef = useRef(false);
 
@@ -93,6 +96,8 @@ function ResultScreenContent() {
 
   const resultSoundPlayer = useAudioPlayer(resultSoundSource);
   const resultSoundStatus = useAudioPlayerStatus(resultSoundPlayer);
+
+
 
   function goBack() {
     if (router.canGoBack()) {
@@ -292,6 +297,15 @@ function ResultScreenContent() {
     );
   }
 
+  const exerciseOrderMatch = job.songId.match(/(\d+)$/);
+  const exerciseOrder = exerciseOrderMatch
+    ? Number(exerciseOrderMatch[1])
+    : undefined;
+
+  const resultTitle = exerciseOrder
+    ? getExerciseTitle(exerciseOrder)
+    : song?.title?.trim() || job.songTitle?.trim() || "ANALİZ SONUCU";
+
   const result = job.result;
   const items = result.items ?? [];
 
@@ -313,7 +327,7 @@ function ResultScreenContent() {
           <ResultTopBar
             colors={colors}
             onBackPress={goBack}
-            label={song?.title ?? "ANALİZ SONUCU"}
+            label={resultTitle}
           />
 
           <ResultHeroCard job={job} colors={colors} feedback={feedback} />
