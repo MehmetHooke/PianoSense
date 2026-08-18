@@ -18,8 +18,8 @@ import {
 export default function LoginScreen() {
   const { colors } = useAppTheme();
 
-  const [email, setEmail] = useState("test@gmail.com");
-  const [password, setPassword] = useState("test123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [secure, setSecure] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -138,7 +138,7 @@ export default function LoginScreen() {
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
-                  placeholder="test@gmail.com"
+                  placeholder="Email"
                   placeholderTextColor={colors.subtleText}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -181,7 +181,7 @@ export default function LoginScreen() {
                 <TextInput
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="test123"
+                  placeholder="Şifre"
                   placeholderTextColor={colors.subtleText}
                   secureTextEntry={secure}
                   style={{

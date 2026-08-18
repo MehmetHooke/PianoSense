@@ -4,13 +4,10 @@
     "slug": "pianosense",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "icon": "./assets/images/icon.png",
-
     "scheme": "pianosense",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.piyanomlabasbasa.app",
@@ -18,15 +15,12 @@
         "usesNonExemptEncryption": false
       }
     },
-
     "android": {
       "package": "com.piyanomlabasbasa.app",
-
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#F8F7FF"
       },
-
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -34,15 +28,12 @@
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       "expo-router",
-
       [
         "expo-splash-screen",
         {
@@ -55,7 +46,6 @@
           }
         }
       ],
-
       [
         "expo-audio",
         {
@@ -66,10 +56,15 @@
       "expo-asset",
       "expo-font"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "857410c5-21c6-4329-8076-27c303e66de4"
+      }
     }
   }
 }
