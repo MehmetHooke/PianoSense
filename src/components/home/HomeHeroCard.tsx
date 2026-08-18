@@ -1,6 +1,12 @@
 import { useAppTheme } from "@/src/theme/useTheme";
 import { Ionicons } from "@expo/vector-icons";
-import { Image, Pressable, Text, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 type Props = {
   onStartPractice: () => void;
@@ -11,6 +17,10 @@ const heroImageDark = require("@/src/assets/images/home/hero-image-dark.png");
 
 export function HomeHeroCard({ onStartPractice }: Props) {
   const { colors, theme } = useAppTheme();
+  const { width } = useWindowDimensions();
+
+  const isCompact = width < 390;
+  const isWide = width >= 430;
 
   const heroImage = theme === "dark" ? heroImageDark : heroImageLight;
 
@@ -29,7 +39,8 @@ export function HomeHeroCard({ onStartPractice }: Props) {
         elevation: 10,
         overflow: "hidden",
         position: "relative",
-        minHeight: 270,
+
+        minHeight: isWide ? 355 : isCompact ? 295 : 315,
       }}
     >
       <Image
@@ -37,10 +48,31 @@ export function HomeHeroCard({ onStartPractice }: Props) {
         resizeMode="contain"
         style={{
           position: "absolute",
-          right: 4,
-          top: 24,
-          width: "69%",
-          height: 200,
+
+          right: isCompact ? -4 : isWide ? 6 : 0,
+
+          top: isCompact
+            ? "50%"
+            : isWide
+              ? 38
+              : 32,
+
+          transform: isCompact
+            ? [{ translateY: -78 }]
+            : undefined,
+
+          width: isCompact
+            ? 150
+            : isWide
+              ? 220
+              : 165,
+
+          height: isCompact
+            ? 156
+            : isWide
+              ? 215
+              : 170,
+
           opacity: 0.95,
           zIndex: 0,
         }}
@@ -50,6 +82,7 @@ export function HomeHeroCard({ onStartPractice }: Props) {
         style={{
           position: "relative",
           zIndex: 2,
+          flex: 1,
         }}
       >
         <View
@@ -82,7 +115,11 @@ export function HomeHeroCard({ onStartPractice }: Props) {
           </Text>
         </View>
 
-        <View style={{ width: "72%" }}>
+        <View
+          style={{
+            width: isCompact ? "72%" : isWide ? "62%" : "67%",
+          }}
+        >
           <Text
             style={{
               color: colors.text,
@@ -112,7 +149,7 @@ export function HomeHeroCard({ onStartPractice }: Props) {
         <Pressable
           onPress={onStartPractice}
           style={({ pressed }) => ({
-            marginTop: 24,
+            marginTop: isWide ? 20 : "auto",
             backgroundColor: pressed ? colors.primaryPressed : colors.primary,
             borderRadius: 18,
             paddingVertical: 15,
