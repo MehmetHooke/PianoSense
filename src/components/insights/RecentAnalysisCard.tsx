@@ -1,4 +1,5 @@
 // src\components\insights\RecentAnalysisCard.tsx
+import { getExerciseTitle } from "@/src/constants/exerciseNames";
 import { useAppTheme } from "@/src/theme/useTheme";
 import type { AnalysisJob } from "@/src/types/analysisJob";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,10 +30,16 @@ function formatDate(job: AnalysisJob) {
 }
 
 function getJobTitle(job: AnalysisJob) {
+  const match = job.songId.match(/(\d+)$/);
+  const order = match ? Number(match[1]) : undefined;
+
+  if (order) {
+    return getExerciseTitle(order);
+  }
+
   if (job.songTitle?.trim()) {
     return job.songTitle.trim();
   }
-
 
   return "Analiz sonucu";
 }
