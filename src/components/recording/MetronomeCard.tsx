@@ -17,7 +17,6 @@ type Props = {
 
 function getTitle(phase: RecordingPhase) {
     if (phase === "countIn") return "Hazırlan";
-    if (phase === "recording") return "Şimdi çal";
     if (phase === "recorded") return "Kayıt tamamlandı";
     return "Hazırlık";
 }
@@ -133,11 +132,11 @@ export function MetronomeCard({
                         textAlign: "center",
                         fontSize: 19,
                         fontWeight: "900",
-                        color: colors.text,
+                        color: isRecording ? colors.danger : colors.text,
                         marginBottom: 6,
                     }}
                 >
-                    {getTitle(phase)}
+                    {isRecording ? `${durationSeconds} sn` : getTitle(phase)}
                 </Text>
 
                 <Text
@@ -222,7 +221,7 @@ export function MetronomeCard({
 
                 <View
                     style={{
-                        
+
                         height: 72,
                         borderRadius: 20,
                         backgroundColor: colors.card,
@@ -261,11 +260,11 @@ export function MetronomeCard({
                             <Text
                                 style={{
                                     color: colors.danger,
-                                    fontSize: 22,
+                                    fontSize: 32,
                                     fontWeight: "900",
                                 }}
                             >
-                                {durationSeconds} sn
+                                {currentBeat} / {beatsBeforeRecording}
                             </Text>
 
                             <Text
@@ -281,7 +280,7 @@ export function MetronomeCard({
                         </>
                     ) : isRecorded ? (
                         <>
-                        
+
                             <Ionicons
                                 name="checkmark-circle"
                                 size={25}
