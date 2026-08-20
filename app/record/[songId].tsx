@@ -82,9 +82,15 @@ function RecordingScreenContent() {
     const originalPlayer = useAudioPlayer(originalSource);
     const originalStatus = useAudioPlayerStatus(originalPlayer);
 
-    const tickPlayer = useAudioPlayer(metronomeTickSource);
-    //debug
+    const tickPlayer = useAudioPlayer(
+        metronomeTickSource,
+        { downloadFirst: true }
+    );
+
     const tickStatus = useAudioPlayerStatus(tickPlayer);
+
+
+
 
     const bpm = song?.bpm ?? 80;
     const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
@@ -138,28 +144,44 @@ function RecordingScreenContent() {
         clearVisualMetronomeTimer();
     }
 
+    useEffect(() => {
+        const subscription = tickPlayer.addListener(
+            "playbackStatusUpdate",
+            (status) => {
+                console.log("[RecordingScreen] TICK STATUS EVENT", {
+                    isLoaded: status.isLoaded,
+                    playing: status.playing,
+                    currentTime: status.currentTime,
+                    playbackState: status.playbackState,
+                    timeControlStatus: status.timeControlStatus,
+                    reasonForWaitingToPlay: status.reasonForWaitingToPlay,
+                    didJustFinish: status.didJustFinish,
+                });
+
+            }
+        );
+
+        return () => {
+            subscription.remove();
+        };
+    }, [tickPlayer]);
+
+
     async function playTick() {
         try {
-            console.log("[RecordingScreen] Tick BEFORE play", {
+            console.log("[RecordingScreen] Tick play", {
                 currentBeat,
-                countInActive: countInActiveRef.current,
                 isLoaded: tickStatus.isLoaded,
-                isBuffering: tickStatus.isBuffering,
-                playing: tickStatus.playing,
-                currentTime: tickStatus.currentTime,
-                duration: tickStatus.duration,
+                playbackState: tickStatus.playbackState,
             });
 
             await tickPlayer.seekTo(0);
             tickPlayer.play();
-
-            console.log("[RecordingScreen] Tick play requested", {
-                currentBeat,
-            });
         } catch (error) {
             console.log("[RecordingScreen] Metronome tick error:", error);
         }
     }
+
 
     function startSilentVisualMetronome() {
         clearVisualMetronomeTimer();
@@ -232,8 +254,12 @@ function RecordingScreenContent() {
 
             if (!countInActiveRef.current) {
                 console.log(
-                    "[RecordingScreen] Recording start cancelled after recorder prepare"
+                    "[RecordingScreen] Recording cancelled after recorder prepare"
                 );
+
+                await audioRecorder.stop();
+                recorderPreparedRef.current = false;
+
                 return;
             }
 
@@ -287,7 +313,7 @@ function RecordingScreenContent() {
                     allowsRecording: false,
                     shouldRouteThroughEarpiece: false,
                     shouldPlayInBackground: false,
-                    interruptionMode: "doNotMix",
+                    interruptionMode: "mixWithOthers",
                 });
             } catch (audioModeError) {
                 console.log(
@@ -354,7 +380,7 @@ function RecordingScreenContent() {
                     allowsRecording: false,
                     shouldRouteThroughEarpiece: false,
                     shouldPlayInBackground: false,
-                    interruptionMode: "doNotMix",
+                    interruptionMode: "mixWithOthers",
                 });
 
                 console.log("[RecordingScreen] Initial audio mode configured");
@@ -498,7 +524,7 @@ function RecordingScreenContent() {
                 allowsRecording: false,
                 shouldRouteThroughEarpiece: false,
                 shouldPlayInBackground: false,
-                interruptionMode: "doNotMix",
+                interruptionMode: "mixWithOthers",
             });
 
             originalPlayer.seekTo(0);
@@ -544,8 +570,11 @@ function RecordingScreenContent() {
 
             if (originalStatus.playing) {
                 originalPlayer.pause();
-                console.log("[RecordingScreen] Original audio paused before count-in");
             }
+
+            await originalPlayer.seekTo(0);
+
+            console.log("[RecordingScreen] Original audio reset before count-in");
 
             countInActiveRef.current = false;
             clearMetronomeTimers();
@@ -563,7 +592,7 @@ function RecordingScreenContent() {
                 allowsRecording: false,
                 shouldRouteThroughEarpiece: false,
                 shouldPlayInBackground: false,
-                interruptionMode: "doNotMix",
+                interruptionMode: "mixWithOthers",
             });
 
             recorderPreparedRef.current = false;
@@ -575,8 +604,6 @@ function RecordingScreenContent() {
                 lastTickPlaybackGraceMs,
             });
 
-            countInActiveRef.current = true;
-            //debug
             console.log("[RecordingScreen] About to start first count-in beat", {
                 tickLoaded: tickStatus.isLoaded,
                 tickPlaying: tickStatus.playing,
@@ -587,13 +614,18 @@ function RecordingScreenContent() {
 
             if (!tickStatus.isLoaded) {
                 console.log("[RecordingScreen] Tick audio is not loaded yet");
+
                 Alert.alert(
                     "Metronom hazırlanıyor",
                     "Metronom sesi henüz hazır değil. Lütfen bir an sonra tekrar dene."
                 );
+
                 return;
             }
+
+            countInActiveRef.current = true;
             runCountInBeat(1);
+
         } catch (error) {
             console.log("[RecordingScreen] Start count-in recording error:", error);
 
@@ -621,7 +653,26 @@ function RecordingScreenContent() {
             }
 
             // Artık count-in sırasında recorder hazırlanmadığı için stop çağırmıyoruz.
-            recorderPreparedRef.current = false;
+            if (recorderPreparedRef.current) {
+                try {
+                    console.log(
+                        "[RecordingScreen] Cancelling prepared recorder during count-in"
+                    );
+
+                    await audioRecorder.stop();
+
+                    console.log(
+                        "[RecordingScreen] Prepared recorder stopped during count-in cancel"
+                    );
+                } catch (error) {
+                    console.log(
+                        "[RecordingScreen] Failed to stop prepared recorder during cancel:",
+                        error
+                    );
+                } finally {
+                    recorderPreparedRef.current = false;
+                }
+            }
 
             setRecordedUri(null);
             setRecordedDurationMillis(0);
@@ -633,7 +684,7 @@ function RecordingScreenContent() {
                 allowsRecording: false,
                 shouldRouteThroughEarpiece: false,
                 shouldPlayInBackground: false,
-                interruptionMode: "doNotMix",
+                interruptionMode: "mixWithOthers",
             });
 
             console.log("[RecordingScreen] Count-in cancelled and audio mode restored");
@@ -685,7 +736,7 @@ function RecordingScreenContent() {
                 allowsRecording: false,
                 shouldRouteThroughEarpiece: false,
                 shouldPlayInBackground: false,
-                interruptionMode: "doNotMix",
+                interruptionMode: "mixWithOthers",
             });
 
             console.log("[RecordingScreen] Audio mode restored after stop", {
