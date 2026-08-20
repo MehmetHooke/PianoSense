@@ -107,9 +107,16 @@ export function listenUserProfile(
 
   return onSnapshot(
     userRef,
+    { includeMetadataChanges: true },
     (snapshot) => {
       if (!snapshot.exists()) {
         onChange(null);
+        return;
+      }
+
+      // Profil henüz sadece local cache'de ise bekle.
+      // Security Rules server tarafında bu dokümanı henüz göremeyebilir.
+      if (snapshot.metadata.hasPendingWrites) {
         return;
       }
 

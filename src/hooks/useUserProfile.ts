@@ -15,10 +15,13 @@ export function useUserProfile() {
     if (!user?.uid) {
       setProfile(null);
       setLoading(false);
+      setError(null);
       return;
     }
 
+    setProfile(null);
     setLoading(true);
+    setError(null);
 
     const unsubscribe = listenUserProfile(
       user.uid,

@@ -14,9 +14,17 @@ export default function TeacherDashboardScreen() {
   const { colors, theme } = useAppTheme();
   const { user, profile } = useUserProfile();
 
-  const { stats, recentActivities, loading, error } = useTeacherHomeData(
-    user?.uid,
-  );
+  const teacherId =
+    profile?.role === "teacher" &&
+      profile?.uid === user?.uid
+      ? user.uid
+      : undefined;
+
+  const { stats, recentActivities, loading, error } =
+    useTeacherHomeData(teacherId);
+
+  console.log("TEACHER DASHBOARD USER:", user?.uid);
+  console.log("TEACHER DASHBOARD PROFILE:", profile);
 
   return (
     <ScrollView
