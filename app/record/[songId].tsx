@@ -31,7 +31,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
-const metronomeTickSource = require("@/src/assets/sound/metronome-tick.wav");
+const metronomeTickSource = require("@/src/assets/sound/metronom-tick-150ms.wav");
 
 export default function RecordingScreen() {
     return (
@@ -57,6 +57,11 @@ function RecordingScreenContent() {
     const visualMetronomeTimerRef =
         useRef<ReturnType<typeof setInterval> | null>(null);
     const countInActiveRef = useRef(false);
+
+    const visualBeatDelayTimerRef =
+        useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const lastAudibleTickAtRef = useRef<number | null>(null);
 
     const [song, setSong] = useState<Song | null>(null);
     const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -96,6 +101,7 @@ function RecordingScreenContent() {
     const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
     const beatsBeforeRecording = song?.beatsBeforeRecording ?? beatsPerMeasure;
     const beatDurationMs = 60000 / bpm;
+    const tickLeadInMs = 150;
 
     // Son tick sesinin duyulması için playback modunda kısa süre kal.
     // Bu süre kayıt başlangıç zamanı değildir.
@@ -142,6 +148,11 @@ function RecordingScreenContent() {
     function clearMetronomeTimers() {
         clearCountInTimer();
         clearVisualMetronomeTimer();
+
+        if (visualBeatDelayTimerRef.current) {
+            clearTimeout(visualBeatDelayTimerRef.current);
+            visualBeatDelayTimerRef.current = null;
+        }
     }
 
     useEffect(() => {
@@ -286,6 +297,18 @@ function RecordingScreenContent() {
 
             countInActiveRef.current = false;
 
+            const recordCalledAt = Date.now();
+
+            console.log("[RecordingScreen] RECORD TIMING CHECK", {
+                lastAudibleTickAt: lastAudibleTickAtRef.current,
+                recordCalledAt,
+                gapAfterLastAudibleTickMs:
+                    lastAudibleTickAtRef.current !== null
+                        ? recordCalledAt - lastAudibleTickAtRef.current
+                        : null,
+                expectedBeatDurationMs: beatDurationMs,
+            });
+
             audioRecorder.record();
 
             setRecordingPhase("recording");
@@ -341,11 +364,31 @@ function RecordingScreenContent() {
             beatDurationMs,
             lastTickPlaybackGraceMs,
         });
-        setCurrentBeat(beat);
+
+        const tickPlayRequestedAt = Date.now();
+
         playTick();
 
+        if (beat === beatsBeforeRecording) {
+            lastAudibleTickAtRef.current =
+                tickPlayRequestedAt + tickLeadInMs;
+
+            console.log("[RecordingScreen] Last audible tick scheduled", {
+                tickPlayRequestedAt,
+                tickLeadInMs,
+                expectedAudibleTickAt: lastAudibleTickAtRef.current,
+            });
+        }
+
+        visualBeatDelayTimerRef.current = setTimeout(() => {
+            if (!countInActiveRef.current) return;
+
+            setCurrentBeat(beat);
+        }, tickLeadInMs);
+
         if (beat >= beatsBeforeRecording) {
-            const recordingStartAtMs = Date.now() + beatDurationMs;
+            const recordingStartAtMs =
+                Date.now() + tickLeadInMs + beatDurationMs;
 
             console.log(
                 "[RecordingScreen] Last count-in beat reached. Preparing recorder before next beat boundary.",
@@ -463,7 +506,7 @@ function RecordingScreenContent() {
                     allowsRecording: false,
                     shouldRouteThroughEarpiece: false,
                     shouldPlayInBackground: false,
-                    interruptionMode: "doNotMix",
+                    interruptionMode: "mixWithOthers",
                 });
 
                 console.log("[RecordingScreen] Screen prepare completed in playback mode");
@@ -486,15 +529,8 @@ function RecordingScreenContent() {
 
             countInActiveRef.current = false;
             clearMetronomeTimers();
-
-            try {
-                originalPlayer.pause();
-                tickPlayer.pause();
-            } catch {
-                // Ignore cleanup audio errors.
-            }
         };
-    }, [originalPlayer, tickPlayer]);
+    }, []);
 
 
 
@@ -527,9 +563,8 @@ function RecordingScreenContent() {
                 interruptionMode: "mixWithOthers",
             });
 
-            originalPlayer.seekTo(0);
+            await originalPlayer.seekTo(0);
             originalPlayer.play();
-
             console.log("[RecordingScreen] Original audio started");
         } catch (error) {
             console.log("[RecordingScreen] Play original error:", error);
@@ -568,13 +603,13 @@ function RecordingScreenContent() {
 
             if (submitting) return;
 
-            if (originalStatus.playing) {
-                originalPlayer.pause();
-            }
+            originalPlayer.pause();
 
             await originalPlayer.seekTo(0);
 
-            console.log("[RecordingScreen] Original audio reset before count-in");
+            console.log(
+                "[RecordingScreen] Original audio paused and reset before count-in"
+            );
 
             countInActiveRef.current = false;
             clearMetronomeTimers();
