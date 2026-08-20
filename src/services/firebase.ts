@@ -3,7 +3,7 @@ import { getApp, getApps, initializeApp } from "firebase/app";
 
 // prettier-ignore
 // @ts-ignore Firebase React Native runtime export
-import { getAuth, getReactNativePersistence, initializeAuth } from "firebase/auth";
+import { getAuth, getReactNativePersistence, initializeAuth, type Auth, } from "firebase/auth";
 
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
@@ -22,7 +22,7 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-let auth;
+let auth: Auth;
 
 if (Platform.OS === "web") {
   auth = getAuth(app);
