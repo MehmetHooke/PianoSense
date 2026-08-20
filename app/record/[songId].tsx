@@ -88,9 +88,12 @@ function RecordingScreenContent() {
     const beatsBeforeRecording = song?.beatsBeforeRecording ?? 4;
     const beatDurationMs = 60000 / bpm;
 
-    // Son count-in vuruşundan sonra da normal bir beat süresi beklenir.
-    // Böylece 4 -> 1 geçişi parçanın gerçek BPM ritmini bozmaz.
-    const lastTickAudibleDelayMs = beatDurationMs;
+    // Son tick sesinin duyulması için playback modunda kısa süre kal.
+    // Bu süre kayıt başlangıç zamanı değildir.
+    const lastTickPlaybackGraceMs = Math.min(
+        180,
+        Math.max(120, beatDurationMs * 0.2)
+    );
 
     const liveDurationMillis = recorderState.durationMillis ?? 0;
     const durationMillis =
@@ -167,7 +170,7 @@ function RecordingScreenContent() {
         }, beatDurationMs);
     }
 
-    async function beginRecordingAfterCountIn() {
+    async function beginRecordingAfterCountIn(recordingStartAtMs: number) {
         try {
             console.log("[RecordingScreen] beginRecordingAfterCountIn called", {
                 countInActive: countInActiveRef.current,
@@ -182,7 +185,6 @@ function RecordingScreenContent() {
                 return;
             }
 
-            countInActiveRef.current = false;
             clearCountInTimer();
 
             try {
@@ -204,23 +206,59 @@ function RecordingScreenContent() {
                 interruptionMode: "doNotMix",
             });
 
+            if (!countInActiveRef.current) {
+                console.log(
+                    "[RecordingScreen] Recording start cancelled after audio mode switch"
+                );
+                return;
+            }
+
             console.log("[RecordingScreen] Preparing recorder after count-in...");
 
             await audioRecorder.prepareToRecordAsync();
             recorderPreparedRef.current = true;
 
-            console.log("[RecordingScreen] Recorder prepared. Starting record...", {
-                recorderUriAfterPrepare: audioRecorder.uri,
+            if (!countInActiveRef.current) {
+                console.log(
+                    "[RecordingScreen] Recording start cancelled after recorder prepare"
+                );
+                return;
+            }
+
+            const remainingMs = recordingStartAtMs - Date.now();
+
+            console.log("[RecordingScreen] Recorder prepared", {
+                recordingStartAtMs,
+                now: Date.now(),
+                remainingMs,
             });
+
+            if (remainingMs > 0) {
+                await new Promise<void>((resolve) => {
+                    setTimeout(resolve, remainingMs);
+                });
+            }
+
+            if (!countInActiveRef.current) {
+                console.log(
+                    "[RecordingScreen] Recording start cancelled before beat boundary"
+                );
+                return;
+            }
+
+            countInActiveRef.current = false;
 
             audioRecorder.record();
 
             setRecordingPhase("recording");
             startSilentVisualMetronome();
 
-            console.log("[RecordingScreen] Recording started after count-in", {
-                recorderPrepared: recorderPreparedRef.current,
-                recorderUriAfterStart: audioRecorder.uri,
+            const actualStartAtMs = Date.now();
+
+            console.log("[RecordingScreen] Recording started on beat boundary", {
+                targetStartAtMs: recordingStartAtMs,
+                actualStartAtMs,
+                differenceMs: actualStartAtMs - recordingStartAtMs,
             });
         } catch (error) {
             console.log("[RecordingScreen] Begin recording after count-in error:", error);
@@ -263,25 +301,28 @@ function RecordingScreenContent() {
             beat,
             beatsBeforeRecording,
             beatDurationMs,
-            lastTickAudibleDelayMs,
+            lastTickPlaybackGraceMs,
         });
-
         setCurrentBeat(beat);
         playTick();
 
         if (beat >= beatsBeforeRecording) {
+            const recordingStartAtMs = Date.now() + beatDurationMs;
+
             console.log(
-                "[RecordingScreen] Last count-in beat reached. Letting last tick be audible before recording.",
+                "[RecordingScreen] Last count-in beat reached. Preparing recorder before next beat boundary.",
                 {
                     beat,
                     beatsBeforeRecording,
-                    delayBeforeRecordingMs: lastTickAudibleDelayMs,
+                    beatDurationMs,
+                    recordingStartAtMs,
+                    playbackGraceMs: lastTickPlaybackGraceMs,
                 }
             );
 
             countInTimerRef.current = setTimeout(() => {
-                beginRecordingAfterCountIn();
-            }, lastTickAudibleDelayMs);
+                beginRecordingAfterCountIn(recordingStartAtMs);
+            }, lastTickPlaybackGraceMs);
 
             return;
         }
@@ -519,7 +560,7 @@ function RecordingScreenContent() {
                 bpm,
                 beatsBeforeRecording,
                 beatDurationMs,
-                lastTickAudibleDelayMs,
+                lastTickPlaybackGraceMs,
             });
 
             countInActiveRef.current = true;
