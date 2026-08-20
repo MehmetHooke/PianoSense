@@ -88,12 +88,9 @@ function RecordingScreenContent() {
     const beatsBeforeRecording = song?.beatsBeforeRecording ?? 4;
     const beatDurationMs = 60000 / bpm;
 
-    // 4. tick sesinin duyulması için küçük pay.
-    // Eski sistemdeki gibi tam 1 beat beklemiyoruz.
-    const lastTickAudibleDelayMs = Math.min(
-        180,
-        Math.max(120, beatDurationMs * 0.2)
-    );
+    // Son count-in vuruşundan sonra da normal bir beat süresi beklenir.
+    // Böylece 4 -> 1 geçişi parçanın gerçek BPM ritmini bozmaz.
+    const lastTickAudibleDelayMs = beatDurationMs;
 
     const liveDurationMillis = recorderState.durationMillis ?? 0;
     const durationMillis =
