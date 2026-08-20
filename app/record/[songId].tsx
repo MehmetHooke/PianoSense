@@ -83,6 +83,8 @@ function RecordingScreenContent() {
     const originalStatus = useAudioPlayerStatus(originalPlayer);
 
     const tickPlayer = useAudioPlayer(metronomeTickSource);
+    //debug
+    const tickStatus = useAudioPlayerStatus(tickPlayer);
 
     const bpm = song?.bpm ?? 80;
     const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
@@ -136,14 +138,23 @@ function RecordingScreenContent() {
         clearVisualMetronomeTimer();
     }
 
-    function playTick() {
+    async function playTick() {
         try {
-            tickPlayer.seekTo(0);
-            tickPlayer.play();
-
-            console.log("[RecordingScreen] Tick played", {
+            console.log("[RecordingScreen] Tick BEFORE play", {
                 currentBeat,
                 countInActive: countInActiveRef.current,
+                isLoaded: tickStatus.isLoaded,
+                isBuffering: tickStatus.isBuffering,
+                playing: tickStatus.playing,
+                currentTime: tickStatus.currentTime,
+                duration: tickStatus.duration,
+            });
+
+            await tickPlayer.seekTo(0);
+            tickPlayer.play();
+
+            console.log("[RecordingScreen] Tick play requested", {
+                currentBeat,
             });
         } catch (error) {
             console.log("[RecordingScreen] Metronome tick error:", error);
@@ -565,6 +576,23 @@ function RecordingScreenContent() {
             });
 
             countInActiveRef.current = true;
+            //debug
+            console.log("[RecordingScreen] About to start first count-in beat", {
+                tickLoaded: tickStatus.isLoaded,
+                tickPlaying: tickStatus.playing,
+                tickCurrentTime: tickStatus.currentTime,
+                tickDuration: tickStatus.duration,
+                tickBuffering: tickStatus.isBuffering,
+            });
+
+            if (!tickStatus.isLoaded) {
+                console.log("[RecordingScreen] Tick audio is not loaded yet");
+                Alert.alert(
+                    "Metronom hazırlanıyor",
+                    "Metronom sesi henüz hazır değil. Lütfen bir an sonra tekrar dene."
+                );
+                return;
+            }
             runCountInBeat(1);
         } catch (error) {
             console.log("[RecordingScreen] Start count-in recording error:", error);
