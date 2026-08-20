@@ -9,6 +9,7 @@ export type Song = {
   order?: number;
 
   bpm?: number;
+  beatsPerMeasure?: number;
   beatsBeforeRecording?: number;
   durationSec?: number;
 

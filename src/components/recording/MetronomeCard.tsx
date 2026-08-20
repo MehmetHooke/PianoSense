@@ -6,6 +6,7 @@ export type RecordingPhase = "idle" | "countIn" | "recording" | "recorded";
 
 type Props = {
     bpm: number;
+    beatsPerMeasure: number;
     beatsBeforeRecording: number;
     currentBeat: number;
     phase: RecordingPhase;
@@ -59,6 +60,7 @@ function getIconName(phase: RecordingPhase) {
 
 export function MetronomeCard({
     bpm,
+    beatsPerMeasure,
     beatsBeforeRecording,
     currentBeat,
     phase,
@@ -214,7 +216,7 @@ export function MetronomeCard({
                                 textAlign: "right",
                             }}
                         >
-                            4/4
+                            {beatsPerMeasure}/4
                         </Text>
                     </View>
                 </View>
@@ -264,7 +266,7 @@ export function MetronomeCard({
                                     fontWeight: "900",
                                 }}
                             >
-                                {currentBeat} / {beatsBeforeRecording}
+                                {currentBeat} / {beatsPerMeasure}
                             </Text>
 
                             <Text
@@ -327,7 +329,9 @@ export function MetronomeCard({
                         gap: 8,
                     }}
                 >
-                    {Array.from({ length: beatsBeforeRecording }).map((_, index) => {
+                    {Array.from({
+                        length: isRecording ? beatsPerMeasure : beatsBeforeRecording,
+                    }).map((_, index) => {
                         const beatNumber = index + 1;
                         const isActiveBeat =
                             (isCountIn || isRecording) && currentBeat === beatNumber;

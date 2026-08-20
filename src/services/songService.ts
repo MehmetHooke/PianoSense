@@ -19,6 +19,12 @@ function mapSong(id: string, data: any): Song {
     order: typeof data.order === "number" ? data.order : undefined,
 
     bpm: typeof data.bpm === "number" ? data.bpm : undefined,
+
+    beatsPerMeasure:
+      typeof data.beatsPerMeasure === "number"
+        ? data.beatsPerMeasure
+        : undefined,
+
     beatsBeforeRecording:
       typeof data.beatsBeforeRecording === "number"
         ? data.beatsBeforeRecording

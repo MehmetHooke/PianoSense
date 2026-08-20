@@ -85,7 +85,8 @@ function RecordingScreenContent() {
     const tickPlayer = useAudioPlayer(metronomeTickSource);
 
     const bpm = song?.bpm ?? 80;
-    const beatsBeforeRecording = song?.beatsBeforeRecording ?? 4;
+    const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
+    const beatsBeforeRecording = song?.beatsBeforeRecording ?? beatsPerMeasure;
     const beatDurationMs = 60000 / bpm;
 
     // Son tick sesinin duyulması için playback modunda kısa süre kal.
@@ -156,12 +157,12 @@ function RecordingScreenContent() {
 
         console.log("[RecordingScreen] Silent visual metronome started", {
             beatDurationMs,
-            beatsBeforeRecording,
+            beatsPerMeasure,
         });
 
         visualMetronomeTimerRef.current = setInterval(() => {
             setCurrentBeat((previousBeat) => {
-                if (previousBeat >= beatsBeforeRecording) {
+                if (previousBeat >= beatsPerMeasure) {
                     return 1;
                 }
 
@@ -845,6 +846,7 @@ function RecordingScreenContent() {
 
             <MetronomeCard
                 bpm={bpm}
+                beatsPerMeasure={beatsPerMeasure}
                 beatsBeforeRecording={beatsBeforeRecording}
                 currentBeat={currentBeat}
                 phase={recordingPhase}
