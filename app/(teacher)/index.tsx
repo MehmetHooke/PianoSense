@@ -23,8 +23,6 @@ export default function TeacherDashboardScreen() {
   const { stats, recentActivities, loading, error } =
     useTeacherHomeData(teacherId);
 
-  console.log("TEACHER DASHBOARD USER:", user?.uid);
-  console.log("TEACHER DASHBOARD PROFILE:", profile);
 
   return (
     <ScrollView

@@ -97,7 +97,6 @@ export function useTeacherHomeData(teacherId?: string) {
         setClassesLoading(false);
       },
       (err) => {
-        console.log("TEACHER HOME CLASSES ERROR:", err);
         setError(err);
         setClassesLoading(false);
       },
@@ -107,7 +106,6 @@ export function useTeacherHomeData(teacherId?: string) {
   }, [teacherId]);
 
   useEffect(() => {
-    console.log("TEACHER HOME teacherId:", teacherId);
     if (!teacherId) {
       setFollowedStudents([]);
       setStudentsLoading(false);
