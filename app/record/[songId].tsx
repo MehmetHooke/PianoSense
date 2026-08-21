@@ -31,7 +31,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
-const metronomeTickSource = require("@/src/assets/sound/metronom-tick-150ms.wav");
+const metronomeTickSource = require("@/src/assets/sound/metronom-tick.wav");
 
 export default function RecordingScreen() {
     return (
