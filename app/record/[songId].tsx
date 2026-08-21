@@ -28,10 +28,12 @@ import {
 } from "expo-audio";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 
 const metronomeTickSource = require("@/src/assets/sound/metronom-tick.wav");
+
 
 export default function RecordingScreen() {
     return (
@@ -62,6 +64,7 @@ function RecordingScreenContent() {
         useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const lastAudibleTickAtRef = useRef<number | null>(null);
+    const lastTickFinishedResolverRef = useRef<(() => void) | null>(null);
 
     const [song, setSong] = useState<Song | null>(null);
     const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -101,14 +104,11 @@ function RecordingScreenContent() {
     const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
     const beatsBeforeRecording = song?.beatsBeforeRecording ?? beatsPerMeasure;
     const beatDurationMs = 60000 / bpm;
-    const tickLeadInMs = 150;
+
 
     // Son tick sesinin duyulması için playback modunda kısa süre kal.
     // Bu süre kayıt başlangıç zamanı değildir.
-    const lastTickPlaybackGraceMs = Math.min(
-        180,
-        Math.max(120, beatDurationMs * 0.2)
-    );
+
 
     const liveDurationMillis = recorderState.durationMillis ?? 0;
     const durationMillis =
@@ -168,6 +168,16 @@ function RecordingScreenContent() {
                     reasonForWaitingToPlay: status.reasonForWaitingToPlay,
                     didJustFinish: status.didJustFinish,
                 });
+                if (status.didJustFinish && lastTickFinishedResolverRef.current) {
+                    console.log("[RecordingScreen] Last tick really finished", {
+                        currentTime: status.currentTime,
+                    });
+
+                    const resolve = lastTickFinishedResolverRef.current;
+                    lastTickFinishedResolverRef.current = null;
+
+                    resolve();
+                }
 
             }
         );
@@ -192,7 +202,35 @@ function RecordingScreenContent() {
             console.log("[RecordingScreen] Metronome tick error:", error);
         }
     }
+    function waitForLastTickToFinish() {
+        return new Promise<void>((resolve) => {
+            let finished = false;
 
+            const finish = () => {
+                if (finished) return;
+
+                finished = true;
+
+                if (lastTickFinishedResolverRef.current === finish) {
+                    lastTickFinishedResolverRef.current = null;
+                }
+
+                clearTimeout(fallbackTimer);
+                resolve();
+            };
+
+            // Native didJustFinish event'i gelmezse count-in kilitlenmesin.
+            const fallbackTimer = setTimeout(() => {
+                console.log(
+                    "[RecordingScreen] Last tick finish fallback triggered"
+                );
+
+                finish();
+            }, 250);
+
+            lastTickFinishedResolverRef.current = finish;
+        });
+    }
 
     function startSilentVisualMetronome() {
         clearVisualMetronomeTimer();
@@ -232,12 +270,6 @@ function RecordingScreenContent() {
 
             clearCountInTimer();
 
-            try {
-                tickPlayer.pause();
-                tickPlayer.seekTo(0);
-            } catch {
-                // Ignore tick cleanup errors.
-            }
 
             console.log(
                 "[RecordingScreen] Switching audio mode to recording mode after count-in"
@@ -260,8 +292,12 @@ function RecordingScreenContent() {
 
             console.log("[RecordingScreen] Preparing recorder after count-in...");
 
-            await audioRecorder.prepareToRecordAsync();
-            recorderPreparedRef.current = true;
+            if (!recorderPreparedRef.current) {
+                console.log("[RecordingScreen] Recorder not prepared, preparing as fallback");
+
+                await audioRecorder.prepareToRecordAsync();
+                recorderPreparedRef.current = true;
+            }
 
             if (!countInActiveRef.current) {
                 console.log(
@@ -274,53 +310,51 @@ function RecordingScreenContent() {
                 return;
             }
 
-            const remainingMs = recordingStartAtMs - Date.now();
-
-            console.log("[RecordingScreen] Recorder prepared", {
-                recordingStartAtMs,
-                now: Date.now(),
-                remainingMs,
-            });
-
-            if (remainingMs > 0) {
-                await new Promise<void>((resolve) => {
-                    setTimeout(resolve, remainingMs);
-                });
-            }
-
-            if (!countInActiveRef.current) {
-                console.log(
-                    "[RecordingScreen] Recording start cancelled before beat boundary"
-                );
-                return;
-            }
-
-            countInActiveRef.current = false;
-
             const recordCalledAt = Date.now();
+            const remainingToBeatMs = recordingStartAtMs - recordCalledAt;
 
-            console.log("[RecordingScreen] RECORD TIMING CHECK", {
+            console.log("[RecordingScreen] RECORD START CHECK", {
                 lastAudibleTickAt: lastAudibleTickAtRef.current,
                 recordCalledAt,
+                targetVisualBeatAt: recordingStartAtMs,
+                remainingToBeatMs,
                 gapAfterLastAudibleTickMs:
                     lastAudibleTickAtRef.current !== null
                         ? recordCalledAt - lastAudibleTickAtRef.current
                         : null,
-                expectedBeatDurationMs: beatDurationMs,
             });
 
+            if (!countInActiveRef.current) {
+                console.log(
+                    "[RecordingScreen] Recording start cancelled before record call"
+                );
+                return;
+            }
+
+            // Kaydı artık hedef beat'i beklemeden başlat.
+            // Baştaki fazlalık analiz tarafında trimlenebilir.
             audioRecorder.record();
 
+            countInActiveRef.current = false;
             setRecordingPhase("recording");
-            startSilentVisualMetronome();
 
-            const actualStartAtMs = Date.now();
-
-            console.log("[RecordingScreen] Recording started on beat boundary", {
-                targetStartAtMs: recordingStartAtMs,
-                actualStartAtMs,
-                differenceMs: actualStartAtMs - recordingStartAtMs,
+            console.log("[RecordingScreen] Recording started early", {
+                recordCalledAt,
+                targetVisualBeatAt: recordingStartAtMs,
+                earlyByMs: Math.max(0, recordingStartAtMs - recordCalledAt),
             });
+
+            // Görsel metronomun 1'i müzikal olarak doğru yerde başlasın.
+            if (remainingToBeatMs > 0) {
+                visualBeatDelayTimerRef.current = setTimeout(() => {
+                    visualBeatDelayTimerRef.current = null;
+
+                    startSilentVisualMetronome();
+                }, remainingToBeatMs);
+            } else {
+                // Cihaz çok yavaş kaldıysa daha fazla geciktirme.
+                startSilentVisualMetronome();
+            }
         } catch (error) {
             console.log("[RecordingScreen] Begin recording after count-in error:", error);
 
@@ -362,51 +396,49 @@ function RecordingScreenContent() {
             beat,
             beatsBeforeRecording,
             beatDurationMs,
-            lastTickPlaybackGraceMs,
         });
 
         const tickPlayRequestedAt = Date.now();
+        const isLastBeat = beat >= beatsBeforeRecording;
+
+        // Son beat için listener'ı tick'i başlatmadan ÖNCE hazırla.
+        // Böylece çok kısa WAV'da didJustFinish event'ini kaçırmayız.
+        const lastTickFinishedPromise = isLastBeat
+            ? waitForLastTickToFinish()
+            : null;
 
         playTick();
+        // Görsel beat her vuruşta güncellensin.
+        // Son beat dahil.
+        setCurrentBeat(beat);
 
-        if (beat === beatsBeforeRecording) {
-            lastAudibleTickAtRef.current =
-                tickPlayRequestedAt + tickLeadInMs;
 
-            console.log("[RecordingScreen] Last audible tick scheduled", {
-                tickPlayRequestedAt,
-                tickLeadInMs,
-                expectedAudibleTickAt: lastAudibleTickAtRef.current,
-            });
-        }
+        if (isLastBeat) {
+            lastAudibleTickAtRef.current = tickPlayRequestedAt;
 
-        visualBeatDelayTimerRef.current = setTimeout(() => {
-            if (!countInActiveRef.current) return;
-
-            setCurrentBeat(beat);
-        }, tickLeadInMs);
-
-        if (beat >= beatsBeforeRecording) {
             const recordingStartAtMs =
-                Date.now() + tickLeadInMs + beatDurationMs;
+                tickPlayRequestedAt + beatDurationMs;
 
-            console.log(
-                "[RecordingScreen] Last count-in beat reached. Preparing recorder before next beat boundary.",
-                {
-                    beat,
-                    beatsBeforeRecording,
-                    beatDurationMs,
-                    recordingStartAtMs,
-                    playbackGraceMs: lastTickPlaybackGraceMs,
-                }
-            );
+            console.log("[RecordingScreen] Last count-in tick started", {
+                tickPlayRequestedAt,
+                recordingStartAtMs,
+                beatDurationMs,
+            });
 
-            countInTimerRef.current = setTimeout(() => {
+            lastTickFinishedPromise?.then(() => {
+                if (!countInActiveRef.current) return;
+
+                console.log(
+                    "[RecordingScreen] Last tick finished. Switching to recording."
+                );
+
                 beginRecordingAfterCountIn(recordingStartAtMs);
-            }, lastTickPlaybackGraceMs);
+            });
 
             return;
         }
+
+        setCurrentBeat(beat);
 
         countInTimerRef.current = setTimeout(() => {
             runCountInBeat(beat + 1);
@@ -501,6 +533,21 @@ function RecordingScreenContent() {
                 // Önemli:
                 // Ekran hazırlanırken kayıt moduna geçmiyoruz.
                 // Count-in sırasında da kayıt modu kapalı kalacak.
+                console.log("[RecordingScreen] Pre-preparing recorder on screen load");
+
+                await setAudioModeAsync({
+                    playsInSilentMode: true,
+                    allowsRecording: true,
+                    shouldRouteThroughEarpiece: false,
+                    shouldPlayInBackground: false,
+                    interruptionMode: "doNotMix",
+                });
+
+                await audioRecorder.prepareToRecordAsync();
+                recorderPreparedRef.current = true;
+
+                console.log("[RecordingScreen] Recorder prepared on screen load");
+
                 await setAudioModeAsync({
                     playsInSilentMode: true,
                     allowsRecording: false,
@@ -508,6 +555,8 @@ function RecordingScreenContent() {
                     shouldPlayInBackground: false,
                     interruptionMode: "mixWithOthers",
                 });
+
+                console.log("[RecordingScreen] Screen prepare completed in playback mode");
 
                 console.log("[RecordingScreen] Screen prepare completed in playback mode");
             } catch (error) {
@@ -630,13 +679,10 @@ function RecordingScreenContent() {
                 interruptionMode: "mixWithOthers",
             });
 
-            recorderPreparedRef.current = false;
-
             console.log("[RecordingScreen] Count-in started in playback mode", {
                 bpm,
                 beatsBeforeRecording,
                 beatDurationMs,
-                lastTickPlaybackGraceMs,
             });
 
             console.log("[RecordingScreen] About to start first count-in beat", {
