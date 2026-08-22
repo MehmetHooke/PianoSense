@@ -6,6 +6,11 @@ import { ResultStateView } from "@/src/components/result/ResultStateView";
 import { listenAnalysisJob } from "@/src/services/analysisJobService";
 import { useAppTheme } from "@/src/theme/useTheme";
 import type { AnalysisJob } from "@/src/types/analysisJob";
+import {
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+} from "expo-audio";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +20,9 @@ const MIN_PROCESSING_SCREEN_MS = 1400;
 const COMPLETED_ANIMATION_MS = 1250;
 
 const completedAnimation = require("@/src/assets/animations/succes.json");
+
+const processingDrumSound = require("@/src/assets/sound/processingDrum.wav");
+const processingCompleteSound = require("@/src/assets/sound/processingComplete.wav");
 
 export default function ProcessingScreen() {
   return (
@@ -34,14 +42,28 @@ function ProcessingScreenContent() {
   const [job, setJob] = useState<AnalysisJob | null>(null);
   const [screenError, setScreenError] = useState<string | null>(null);
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
+
   const [minDelayPassed, setMinDelayPassed] = useState(false);
   const [showCompletedAnimation, setShowCompletedAnimation] = useState(false);
 
+  const [completedAnimationFinished, setCompletedAnimationFinished] =
+    useState(false);
+
+  const [completionSoundFinished, setCompletionSoundFinished] =
+    useState(false);
+
+  const drumPlayer = useAudioPlayer(processingDrumSound);
+  const completePlayer = useAudioPlayer(processingCompleteSound);
+
+  const completePlayerStatus = useAudioPlayerStatus(completePlayer);
+
   const completedJobIdRef = useRef<string | null>(null);
   const hasNavigatedRef = useRef(false);
-  const completedAnimationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const completionStartedRef = useRef(false);
+
+  const completedAnimationTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   const navigateToResult = useCallback(
     (targetJobId: string) => {
@@ -54,7 +76,7 @@ function ProcessingScreenContent() {
         params: { jobId: targetJobId },
       });
     },
-    [router]
+    [router],
   );
 
   function goHome() {
@@ -70,6 +92,10 @@ function ProcessingScreenContent() {
     goHome();
   }
 
+  // ---------------------------------------------------------
+  // Minimum processing screen duration
+  // ---------------------------------------------------------
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setMinDelayPassed(true);
@@ -80,28 +106,55 @@ function ProcessingScreenContent() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!showCompletedAnimation) return;
-    if (!minDelayPassed) return;
-    if (!completedJobIdRef.current) return;
-    if (hasNavigatedRef.current) return;
+  // ---------------------------------------------------------
+  // Start processing drum loop
+  // ---------------------------------------------------------
 
-    if (completedAnimationTimerRef.current) {
-      clearTimeout(completedAnimationTimerRef.current);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function startProcessingDrum() {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+          shouldRouteThroughEarpiece: false,
+          shouldPlayInBackground: false,
+          interruptionMode: "doNotMix",
+        });
+
+        if (cancelled) return;
+
+        // Analiz biz audio mode hazırlanırken tamamlanmış olabilir.
+        // Böyle bir durumda davulu sonradan başlatma.
+        if (completionStartedRef.current) return;
+
+        drumPlayer.loop = true;
+        drumPlayer.seekTo(0);
+        drumPlayer.play();
+
+        console.log("[ProcessingScreen] Drum loop started");
+      } catch (error) {
+        console.log("[ProcessingScreen] Start drum sound error:", error);
+      }
     }
 
-    completedAnimationTimerRef.current = setTimeout(() => {
-      if (!completedJobIdRef.current) return;
-      navigateToResult(completedJobIdRef.current);
-    }, COMPLETED_ANIMATION_MS);
+    startProcessingDrum();
 
     return () => {
-      if (completedAnimationTimerRef.current) {
-        clearTimeout(completedAnimationTimerRef.current);
-        completedAnimationTimerRef.current = null;
+      cancelled = true;
+
+      try {
+        drumPlayer.pause();
+      } catch {
+        // Ignore cleanup audio errors.
       }
     };
-  }, [showCompletedAnimation, minDelayPassed, navigateToResult]);
+  }, [drumPlayer]);
+
+  // ---------------------------------------------------------
+  // Listen analysis job
+  // ---------------------------------------------------------
 
   useEffect(() => {
     if (!jobId) {
@@ -115,32 +168,178 @@ function ProcessingScreenContent() {
         setJob(updatedJob);
 
         if (!updatedJob) {
+          try {
+            drumPlayer.pause();
+            completePlayer.pause();
+          } catch {
+            // Ignore audio cleanup errors.
+          }
+
           setScreenError("Analiz işi bulunamadı.");
           return;
         }
 
+        // ---------------------------------------------------
+        // COMPLETED
+        // ---------------------------------------------------
+
         if (updatedJob.status === "completed") {
+          // Firestore aynı completed snapshot'ını tekrar gönderirse
+          // completion sesini/animasyonunu tekrar başlatma.
+          if (completionStartedRef.current) {
+            return;
+          }
+
+          completionStartedRef.current = true;
           completedJobIdRef.current = jobId;
+
+          console.log("[ProcessingScreen] Analysis completed", {
+            jobId,
+          });
+
+          // Önce davulu kesin olarak durdur.
+          try {
+            drumPlayer.pause();
+            drumPlayer.loop = false;
+            drumPlayer.seekTo(0);
+
+            console.log("[ProcessingScreen] Drum loop stopped");
+          } catch (error) {
+            console.log("[ProcessingScreen] Stop drum error:", error);
+          }
+
+          // Completion durumlarını sıfırla.
+          setCompletedAnimationFinished(false);
+          setCompletionSoundFinished(false);
+
+          // Animasyonu göster.
           setShowCompletedAnimation(true);
+
+          // Ardından çınlama sesini bir kez oynat.
+          try {
+            completePlayer.loop = false;
+            completePlayer.seekTo(0);
+            completePlayer.play();
+
+            console.log("[ProcessingScreen] Completion sound started");
+          } catch (error) {
+            console.log(
+              "[ProcessingScreen] Completion sound start error:",
+              error,
+            );
+
+            // Ses herhangi bir nedenle başlayamazsa kullanıcıyı
+            // processing ekranında sonsuza kadar tutma.
+            setCompletionSoundFinished(true);
+          }
+
           return;
         }
 
+        // ---------------------------------------------------
+        // FAILED
+        // ---------------------------------------------------
+
         if (updatedJob.status === "failed") {
+          try {
+            drumPlayer.pause();
+            drumPlayer.loop = false;
+
+            completePlayer.pause();
+            completePlayer.loop = false;
+          } catch {
+            // Ignore audio cleanup errors.
+          }
+
           setShowCompletedAnimation(false);
 
           setFailedMessage(
             updatedJob.errorMessage ??
-              "Analiz sırasında bir sorun oluştu. Daha sessiz bir ortamda tekrar kayıt almayı deneyebilirsin."
+            "Analiz sırasında bir sorun oluştu. Daha sessiz bir ortamda tekrar kayıt almayı deneyebilirsin.",
           );
         }
       },
       () => {
+        try {
+          drumPlayer.pause();
+          completePlayer.pause();
+        } catch {
+          // Ignore audio cleanup errors.
+        }
+
         setScreenError("Analiz durumu dinlenirken bir sorun oluştu.");
-      }
+      },
     );
 
     return unsubscribe;
-  }, [jobId]);
+  }, [jobId, drumPlayer, completePlayer]);
+
+  // ---------------------------------------------------------
+  // Completion animation timer
+  // Timer KALIYOR.
+  // ---------------------------------------------------------
+
+  useEffect(() => {
+    if (!showCompletedAnimation) return;
+
+    if (completedAnimationTimerRef.current) {
+      clearTimeout(completedAnimationTimerRef.current);
+    }
+
+    completedAnimationTimerRef.current = setTimeout(() => {
+      setCompletedAnimationFinished(true);
+
+      console.log("[ProcessingScreen] Completion animation finished");
+    }, COMPLETED_ANIMATION_MS);
+
+    return () => {
+      if (completedAnimationTimerRef.current) {
+        clearTimeout(completedAnimationTimerRef.current);
+        completedAnimationTimerRef.current = null;
+      }
+    };
+  }, [showCompletedAnimation]);
+
+  // ---------------------------------------------------------
+  // Detect actual end of completion sound
+  // ---------------------------------------------------------
+
+useEffect(() => {
+  if (!completionStartedRef.current) return;
+  if (!showCompletedAnimation) return;
+  if (!completePlayerStatus.didJustFinish) return;
+
+  console.log("[ProcessingScreen] Completion sound finished");
+
+  setCompletionSoundFinished(true);
+}, [completePlayerStatus.didJustFinish, showCompletedAnimation]);
+
+  // ---------------------------------------------------------
+  // Navigate only when EVERYTHING is finished
+  // ---------------------------------------------------------
+
+  useEffect(() => {
+    if (!minDelayPassed) return;
+    if (!completedAnimationFinished) return;
+    if (!completionSoundFinished) return;
+    if (!completedJobIdRef.current) return;
+    if (hasNavigatedRef.current) return;
+
+    console.log("[ProcessingScreen] Ready to navigate to result", {
+      jobId: completedJobIdRef.current,
+    });
+
+    navigateToResult(completedJobIdRef.current);
+  }, [
+    minDelayPassed,
+    completedAnimationFinished,
+    completionSoundFinished,
+    navigateToResult,
+  ]);
+
+  // ---------------------------------------------------------
+  // Full audio cleanup on screen unmount
+  // ---------------------------------------------------------
 
   useEffect(() => {
     return () => {
@@ -148,8 +347,26 @@ function ProcessingScreenContent() {
         clearTimeout(completedAnimationTimerRef.current);
         completedAnimationTimerRef.current = null;
       }
+
+      try {
+        drumPlayer.pause();
+        drumPlayer.loop = false;
+      } catch {
+        // Ignore cleanup audio errors.
+      }
+
+      try {
+        completePlayer.pause();
+        completePlayer.loop = false;
+      } catch {
+        // Ignore cleanup audio errors.
+      }
     };
-  }, []);
+  }, [drumPlayer, completePlayer]);
+
+  // ---------------------------------------------------------
+  // Error states
+  // ---------------------------------------------------------
 
   if (screenError) {
     return (
@@ -176,6 +393,10 @@ function ProcessingScreenContent() {
       />
     );
   }
+
+  // ---------------------------------------------------------
+  // Processing screen
+  // ---------------------------------------------------------
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

@@ -225,17 +225,20 @@ export async function getAnalysisJobById(
 
 export async function getCompletedAnalysisJobsByUser(
   userId: string,
-  maxCount = 20,
+  maxCount?: number,
 ): Promise<AnalysisJob[]> {
   const jobsRef = collection(db, "analysisJobs");
 
-  const q = query(
-    jobsRef,
+  const constraints = [
     where("userId", "==", userId),
     where("status", "==", "completed"),
     orderBy("completedAt", "desc"),
-    limit(maxCount),
-  );
+  ];
+
+  const q =
+    typeof maxCount === "number"
+      ? query(jobsRef, ...constraints, limit(maxCount))
+      : query(jobsRef, ...constraints);
 
   const snapshot = await getDocs(q);
 

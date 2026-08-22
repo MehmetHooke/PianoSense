@@ -57,7 +57,6 @@ export function InsightsContent({
 
         const completedJobs = await getCompletedAnalysisJobsByUser(
           targetUserId,
-          30,
         );
 
         setJobs(completedJobs);
