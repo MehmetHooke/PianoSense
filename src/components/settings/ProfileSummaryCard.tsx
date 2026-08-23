@@ -27,7 +27,7 @@ export function ProfileSummaryCard({
 }: Props) {
   const { colors } = useAppTheme();
 
-  const shownName = displayName?.trim() || "PianoSense Kullanıcısı";
+  const shownName = displayName?.trim() || "Kullanıcı";
   const shownEmail = email?.trim() || "E-posta bilgisi yok";
 
   return (
