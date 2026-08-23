@@ -44,7 +44,11 @@ export default function Index() {
     return unsubscribe;
   }, [user?.uid]);
 
-  if (loading || profileLoading) {
+  if (
+    loading ||
+    profileLoading ||
+    (user && !profile && !profileError)
+  ) {
     return <AuthLoadingScreen />;
   }
 
