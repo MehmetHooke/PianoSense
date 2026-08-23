@@ -30,7 +30,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 
 const metronomeTickSource = require("@/src/assets/sound/metronom-tick.wav");
 
@@ -401,8 +401,11 @@ function RecordingScreenContent() {
                     audioModeError
                 );
             }
-
-            Alert.alert("Hata", "Kayıt başlatılamadı.");
+            showAlert({
+                type: "warning",
+                title: "Hata",
+                message: "Kayıt başlatılamadı.",
+            });
         }
     }
 
@@ -499,7 +502,12 @@ function RecordingScreenContent() {
                 });
 
                 if (!songId) {
-                    Alert.alert("Hata", "Parça bilgisi bulunamadı.");
+
+                    showAlert({
+                        type: "error",
+                        title: "Hata",
+                        message: "Parça bilgisi bulunamadı.",
+                    });
                     router.back();
                     return;
                 }
@@ -507,7 +515,11 @@ function RecordingScreenContent() {
                 const selectedSong = await getSongById(songId);
 
                 if (!selectedSong) {
-                    Alert.alert("Hata", "Seçilen parça bulunamadı.");
+                    showAlert({
+                        type: "warning",
+                        title: "Hata",
+                        message: "Seçilen parça bulunamadı.",
+                    });
                     router.back();
                     return;
                 }
@@ -542,10 +554,12 @@ function RecordingScreenContent() {
                 if (!permission.granted) {
                     setPermissionGranted(false);
 
-                    Alert.alert(
-                        "Mikrofon izni gerekli",
-                        "Kayıt alabilmek için mikrofon izni vermelisin."
-                    );
+
+                    showAlert({
+                        type: "warning",
+                        title: "Mikrofon izni gerekli",
+                        message: "Kayıt alabilmek için mikrofon izni vermelisin.",
+                    });
 
                     return;
                 }
@@ -568,8 +582,11 @@ function RecordingScreenContent() {
                 console.log("[RecordingScreen] Screen prepare completed in playback mode");
             } catch (error) {
                 console.log("[RecordingScreen] Recording screen prepare error:", error);
-
-                Alert.alert("Hata", "Kayıt ekranı hazırlanırken bir sorun oluştu.");
+                showAlert({
+                    type: "error",
+                    title: "Hata",
+                    message: "Kayıt ekranı hazırlanırken bir sorun oluştu.",
+                });
             } finally {
                 setOriginalLoading(false);
                 setScreenLoading(false);
@@ -600,15 +617,20 @@ function RecordingScreenContent() {
             });
 
             if (!originalUrl) {
-                Alert.alert("Hata", "Orijinal ses dosyası bulunamadı.");
+                showAlert({
+                    type: "error",
+                    title: "Hata",
+                    message: "Orijinal ses dosyası bulunamadı.",
+                });
                 return;
             }
 
             if (recordingPhase === "countIn" || recordingPhase === "recording") {
-                Alert.alert(
-                    "Kayıt hazırlanıyor",
-                    "Orijinal melodiyi dinlemek için önce kayıt akışını durdurmalısın."
-                );
+                showAlert({
+                    type: "info",
+                    title: "Kayıt hazırlanıyor",
+                    message: "Orijinal melodiyi dinlemek için önce kayıt akışını durdurmalısın.",
+                });
                 return;
             }
 
@@ -625,7 +647,11 @@ function RecordingScreenContent() {
             console.log("[RecordingScreen] Original audio started");
         } catch (error) {
             console.log("[RecordingScreen] Play original error:", error);
-            Alert.alert("Hata", "Orijinal melodi oynatılamadı.");
+            showAlert({
+                type: "warning",
+                title: "Hata",
+                message: "Orijinal melodi oynatılamadı.",
+            });
         }
     };
 
@@ -651,10 +677,11 @@ function RecordingScreenContent() {
             });
 
             if (!permissionGranted) {
-                Alert.alert(
-                    "Mikrofon izni gerekli",
-                    "Kayıt alabilmek için mikrofon izni vermelisin."
-                );
+                showAlert({
+                    type: "warning",
+                    title: "Mikrofon izni gerekli",
+                    message: "Kayıt alabilmek için mikrofon izni vermelisin.",
+                });
                 return;
             }
 
@@ -708,11 +735,11 @@ function RecordingScreenContent() {
 
             if (!tickStatus.isLoaded) {
                 console.log("[RecordingScreen] Tick audio is not loaded yet");
-
-                Alert.alert(
-                    "Metronom hazırlanıyor",
-                    "Metronom sesi henüz hazır değil. Lütfen bir an sonra tekrar dene."
-                );
+                showAlert({
+                    type: "info",
+                    title: "Metronom hazırlanıyor",
+                    message: "Metronom sesi henüz hazır değil. Lütfen bir an sonra tekrar dene.",
+                });
 
                 return;
             }
@@ -728,7 +755,11 @@ function RecordingScreenContent() {
             setRecordingPhase("idle");
             setCurrentBeat(1);
 
-            Alert.alert("Hata", "Kayıt hazırlığı başlatılamadı.");
+            showAlert({
+                type: "warning",
+                title: "Hata",
+                message: "Kayıt hazırlığı başlatılamadı.",
+            });
         }
     };
 
@@ -826,7 +857,11 @@ function RecordingScreenContent() {
             if (!uri) {
                 setRecordingPhase("idle");
 
-                Alert.alert("Hata", "Kayıt dosyası oluşturulamadı.");
+                showAlert({
+                    type: "warning",
+                    title: "Hata",
+                    message: "Kayıt dosyası oluşturulamadı.",
+                });
                 return;
             }
 
@@ -850,7 +885,12 @@ function RecordingScreenContent() {
             });
         } catch (error) {
             console.log("[RecordingScreen] Stop recording error:", error);
-            Alert.alert("Hata", "Kayıt durdurulamadı.");
+
+            showAlert({
+                type: "warning",
+                title: "Hata",
+                message: "Kayıt dosyası oluşturulamadı.",
+            });
         }
     };
 
@@ -878,18 +918,20 @@ function RecordingScreenContent() {
         });
 
         if (recordingPhase === "countIn") {
-            Alert.alert(
-                "Hazırlık devam ediyor",
-                "Geri dönmeden önce hazırlığı iptal etmelisin."
-            );
+            showAlert({
+                type: "info",
+                title: "Hazırlık devam ediyor",
+                message: "Geri dönmeden önce hazırlığı iptal etmelisin.",
+            });
             return;
         }
 
         if (recordingPhase === "recording") {
-            Alert.alert(
-                "Kayıt devam ediyor",
-                "Geri dönmeden önce kaydı durdurmalısın."
-            );
+            showAlert({
+                type: "info",
+                title: "Kayıt devam ediyor",
+                message: "Geri dönmeden önce kaydı durdurmalısın.",
+            });
             return;
         }
 
@@ -910,22 +952,38 @@ function RecordingScreenContent() {
             });
 
             if (!user) {
-                Alert.alert("Hata", "Kullanıcı oturumu bulunamadı.");
+                showAlert({
+                    type: "warning",
+                    title: "Hata",
+                    message: "Kullanıcı oturumu bulunamadı.",
+                });
                 return;
             }
 
             if (!song) {
-                Alert.alert("Hata", "Parça bilgisi bulunamadı.");
+                showAlert({
+                    type: "warning",
+                    title: "Hata",
+                    message: "Parça bilgisi bulunamadı.",
+                });
                 return;
             }
 
             if (!songId) {
-                Alert.alert("Hata", "Parça ID bilgisi bulunamadı.");
+                showAlert({
+                    type: "warning",
+                    title: "Hata",
+                    message: "Parça ID bilgisi bulunamadı.",
+                });
                 return;
             }
 
             if (!recordedUri) {
-                Alert.alert("Kayıt yok", "Önce bir kayıt oluşturmalısın.");
+                showAlert({
+                    type: "warning",
+                    title: "Hata",
+                    message: "Önce bir kayıt oluşturmalısın.",
+                });
                 return;
             }
 

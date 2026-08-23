@@ -11,6 +11,7 @@ import {
   getProfileImageSource,
 } from "@/src/constants/profileImages";
 import { useAuth } from "@/src/context/AuthContext";
+import { useAppAlert } from "@/src/hooks/useAppAlert";
 import { auth } from "@/src/services/firebase";
 import {
   listenUserProfile,
@@ -25,12 +26,11 @@ import { signOut } from "firebase/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  Text,
+  Text
 } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -49,6 +49,8 @@ export default function ParentProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const { user } = useAuth();
+
+  const { showAlert } = useAppAlert();
 
   const [expandedSetting, setExpandedSetting] =
     useState<ExpandedSetting>(null);
@@ -111,11 +113,12 @@ export default function ParentProfileScreen() {
       setProfilePickerVisible(false);
     } catch (error) {
       console.log("UPDATE PROFILE IMAGE ERROR:", error);
+      showAlert({
+        type: "error",
+        title: "Profil resmi değiştirilemedi",
+        message: "Profil resmin kaydedilirken bir sorun oluştu. Lütfen tekrar dene.",
+      });
 
-      Alert.alert(
-        "Profil resmi değiştirilemedi",
-        "Profil resmin kaydedilirken bir sorun oluştu. Lütfen tekrar dene.",
-      );
     } finally {
       setProfileImageSaving(false);
     }
@@ -129,10 +132,11 @@ export default function ParentProfileScreen() {
     } catch (error) {
       console.log("Logout error:", error);
 
-      Alert.alert(
-        "Çıkış yapılamadı",
-        "Hesabından çıkış yapılırken bir sorun oluştu. Lütfen tekrar dene.",
-      );
+      showAlert({
+        type: "error",
+        title: "Çıkış yapılamadı",
+        message: "Hesabından çıkış yapılırken bir sorun oluştu. Lütfen tekrar dene.",
+      });
     } finally {
       setLogoutLoading(false);
     }
