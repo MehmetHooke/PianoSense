@@ -66,7 +66,9 @@ export function AppInfoCard() {
               marginTop: 6,
             }}
           >
-            Öğretmen Rolü ve Sınıf işlemleri ekleniyor. Öğretmen için ayrı giriş yerine kayıt olurken öğretmen olarak kayıt olmaları yeterli olacaktır.Öğretmenler analiz yapamıyor.
+            Piyanomla Baş Başa, öğrencilerin piyano çalışmalarını kaydedip analiz
+            etmelerine yardımcı olur. Öğretmenler öğrencilerinin gelişimini takip
+            edebilir, veliler ise çocuklarının analiz sonuçlarını görüntüleyebilir.
           </Text>
 
           <View
@@ -92,7 +94,7 @@ export function AppInfoCard() {
                   fontWeight: "900",
                 }}
               >
-                MVP Tamamlandı
+                Öğrenci Analizi
               </Text>
             </View>
 
@@ -111,7 +113,26 @@ export function AppInfoCard() {
                   fontWeight: "900",
                 }}
               >
-                Analiz sistemi aktif
+                Öğretmen Takibi
+              </Text>
+            </View>
+
+            <View
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 7,
+                borderRadius: 999,
+                backgroundColor: colors.infoSoft,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.infoForeground,
+                  fontSize: 11,
+                  fontWeight: "900",
+                }}
+              >
+                Veli Görünümü
               </Text>
             </View>
           </View>
