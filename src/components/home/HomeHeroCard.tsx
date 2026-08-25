@@ -139,6 +139,7 @@ export function HomeHeroCard({ onStartPractice }: Props) {
               lineHeight: 22,
               fontWeight: "600",
               marginTop: 10,
+              marginBottom:10,
             }}
           >
             Kısa bir egzersiz seç, piyanoda çal ve doğru nota, kaçırılan nota ve
@@ -152,6 +153,7 @@ export function HomeHeroCard({ onStartPractice }: Props) {
             marginTop: isWide ? 20 : "auto",
             backgroundColor: pressed ? colors.primaryPressed : colors.primary,
             borderRadius: 18,
+            
             paddingVertical: 15,
             paddingHorizontal: 18,
             flexDirection: "row",
