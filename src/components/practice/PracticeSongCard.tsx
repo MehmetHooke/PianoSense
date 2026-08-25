@@ -1,11 +1,12 @@
+import { getSongImageUrl } from "@/src/services/songImageService";
 import { useAppTheme } from "@/src/theme/useTheme";
+
 import type { Song } from "@/src/types/song";
 import { Ionicons } from "@expo/vector-icons";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { PracticeMetaPill } from "./PracticeMetaPill";
-
-const musicSheetLight = require("@/src/assets/images/practice/piano.png");
-const musicSheetDark = require("@/src/assets/images/practice/piano.png");
 
 type Props = {
   song: Song;
@@ -20,10 +21,54 @@ export function PracticeSongCard({
   durationLabel,
   onPress,
 }: Props) {
-  const { colors, theme } = useAppTheme();
+  const { colors } = useAppTheme();
 
-  const musicSheetImage =
-    theme === "dark" ?  musicSheetLight : musicSheetDark;
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(true);
+
+
+  useEffect(() => {
+    let active = true;
+
+    setImageUrl(null);
+    setImageLoading(true);
+
+    async function loadSongImage() {
+      if (!song.order) {
+        if (active) {
+          setImageLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const url = await getSongImageUrl(song.order);
+
+        if (active) {
+          setImageUrl(url);
+        }
+      } catch (error) {
+        console.log(
+          `[PracticeSongCard] Image load error for order ${song.order}:`,
+          error
+        );
+
+        if (active) {
+          setImageUrl(null);
+        }
+      } finally {
+        if (active) {
+          setImageLoading(false);
+        }
+      }
+    }
+
+    loadSongImage();
+
+    return () => {
+      active = false;
+    };
+  }, [song.order]);
 
   return (
     <Pressable
@@ -45,21 +90,34 @@ export function PracticeSongCard({
         style={{
           width: 58,
           height: 58,
-          borderRadius: 20,
+          borderRadius: 12,
           backgroundColor: colors.tabBarBackground,
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
         }}
       >
-        <Image
-          source={musicSheetImage}
-          style={{
-            width: 60,
-            height: 60,
-          }}
-          resizeMode="contain"
-        />
+        {imageLoading ? (
+          <ActivityIndicator
+            size="small"
+            color={colors.primary}
+          />
+        ) : imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={{
+              width: "100%",
+              height: "100%",
+            }}
+            contentFit="cover"
+          />
+        ) : (
+          <Ionicons
+            name="musical-notes"
+            size={26}
+            color={colors.primary}
+          />
+        )}
       </View>
 
       <View style={{ flex: 1 }}>
