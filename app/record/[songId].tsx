@@ -1067,7 +1067,7 @@ function RecordingScreenContent() {
             <RecordingHeader
                 title={getExerciseTitle(song?.order)}
                 description={song?.description}
-                isDark={theme === "dark"}
+                songOrder={song?.order}
                 onBackPress={handleBackPress}
                 colors={colors}
             />

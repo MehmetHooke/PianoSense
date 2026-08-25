@@ -2,34 +2,76 @@ import type { AppColors } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Pressable,
-    Text,
-    View,
+  ActivityIndicator,
+  Pressable,
+  Text,
+  View,
 } from "react-native";
 
-const pianoLightImage = require("@/src/assets/images/record/record-piano-light.png");
-const pianoDarkImage = require("@/src/assets/images/record/record-piano-dark.png");
+import { getSongImageUrl } from "@/src/services/songImageService";
+import { Image } from "expo-image";
+import { useEffect } from "react";
 
 type Props = {
   title: string;
   description?: string;
+  songOrder?: number;
   onBackPress: () => void;
   colors: AppColors;
-  isDark: boolean;
 };
-
 export function RecordingHeader({
   title,
   description,
+  songOrder,
   onBackPress,
   colors,
-  isDark,
 }: Props) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(true);
 
-  const imageSource = isDark ? pianoDarkImage : pianoLightImage;
+  useEffect(() => {
+    let active = true;
+
+    setImageUrl(null);
+    setImageLoading(true);
+
+    async function loadSongImage() {
+      if (!songOrder) {
+        if (active) {
+          setImageLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const url = await getSongImageUrl(songOrder);
+
+        if (active) {
+          setImageUrl(url);
+        }
+      } catch (error) {
+        console.log(
+          `[RecordingHeader] Image load error for order ${songOrder}:`,
+          error
+        );
+
+        if (active) {
+          setImageUrl(null);
+        }
+      } finally {
+        if (active) {
+          setImageLoading(false);
+        }
+      }
+    }
+
+    loadSongImage();
+
+    return () => {
+      active = false;
+    };
+  }, [songOrder]);
+
 
   return (
     <View style={{ marginBottom: 18 }}>
@@ -148,59 +190,78 @@ export function RecordingHeader({
         </View>
 
         {/* Right image */}
+        {/* Song cover */}
         <View
           pointerEvents="none"
           style={{
             position: "absolute",
-            right: -6,
-            top: 34,
-            width: 150,
-            height: 150,
+            right: 16,
+            bottom: 16,
+            width: 112,
+            height: 112,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          {/* soft decorative circle */}
+          {/* Arkadaki dekoratif kart */}
           <View
             style={{
               position: "absolute",
-              width: 116,
-              height: 116,
-              borderRadius: 999,
+              width: 102,
+              height: 102,
+              borderRadius: 28,
               backgroundColor: colors.primarySoft,
-              opacity: 0.75,
+              transform: [{ rotate: "6deg" }],
             }}
           />
 
-          {imageLoading && (
-            <View
-              style={{
-                position: "absolute",
-                width: 84,
-                height: 84,
-                borderRadius: 999,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.softBorder,
-              }}
-            >
-              <ActivityIndicator size="small" color={colors.primary} />
-            </View>
-          )}
-
-          <Image
-            source={imageSource}
-            resizeMode="contain"
-            onLoadStart={() => setImageLoading(true)}
-            onLoadEnd={() => setImageLoading(false)}
+          <View
             style={{
-              width: 146,
-              height: 146,
-              opacity: imageLoading ? 0 : 1,
+              width: 96,
+              height: 96,
+              borderRadius: 24,
+              overflow: "hidden",
+              backgroundColor: colors.card,
+              borderWidth: 2,
+              borderColor: colors.softBorder,
+
+              shadowColor: colors.shadow,
+              shadowOpacity: 0.14,
+              shadowRadius: 10,
+              shadowOffset: {
+                width: 0,
+                height: 5,
+              },
+              elevation: 4,
+
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
+          >
+            {imageLoading ? (
+              <ActivityIndicator
+                size="small"
+                color={colors.primary}
+              />
+            ) : imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={150}
+              />
+            ) : (
+              <Ionicons
+                name="musical-notes"
+                size={30}
+                color={colors.primary}
+              />
+            )}
+          </View>
         </View>
       </View>
     </View>
