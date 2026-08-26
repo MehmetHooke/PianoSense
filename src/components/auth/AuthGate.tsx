@@ -1,3 +1,4 @@
+//src\components\auth\AuthGate.tsx
 import { useAuth } from "@/src/context/AuthContext";
 import { useAppTheme } from "@/src/theme/useTheme";
 import { Ionicons } from "@expo/vector-icons";
