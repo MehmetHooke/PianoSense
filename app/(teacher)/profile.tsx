@@ -1,5 +1,6 @@
 // app/(student)/profile.tsx
 
+import DeleteAccountInfoRow from "@/src/components/profile/DeleteAccountInfoRow";
 import { AppInfoCard } from "@/src/components/settings/AppInfoCard";
 import { ProfileImagePickerModal } from "@/src/components/settings/ProfileImagePickerModal";
 import { ProfileSummaryCard } from "@/src/components/settings/ProfileSummaryCard";
@@ -11,6 +12,7 @@ import {
 } from "@/src/constants/profileImages";
 import { useAuth } from "@/src/context/AuthContext";
 import { useAppAlert } from "@/src/hooks/useAppAlert";
+import { deleteMyAccount } from "@/src/services/accountService";
 import { auth } from "@/src/services/firebase";
 import {
   listenUserProfile,
@@ -29,14 +31,19 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text
+  Text,
+  View,
 } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const themeImage = require("@/src/assets/images/profile/solar-eclipse.png");
 
-type ExpandedSetting = "studentCode" | "theme" | null;
+type ExpandedSetting =
+  | "studentCode"
+  | "theme"
+  | "deleteAccount"
+  | null;
 
 const settingsLayoutTransition = LinearTransition.springify()
   .damping(45)
@@ -51,6 +58,8 @@ export default function ProfileScreen() {
 
   const [expandedSetting, setExpandedSetting] =
     useState<ExpandedSetting>(null);
+
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -139,6 +148,38 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteAccountLoading) {
+      return;
+    }
+
+    try {
+      setDeleteAccountLoading(true);
+
+      await deleteMyAccount();
+
+      await signOut(auth);
+
+      router.replace("/auth/login");
+    } catch (error: any) {
+      console.log("DELETE ACCOUNT ERROR RAW:", error);
+      console.log("DELETE ACCOUNT ERROR CODE:", error?.code);
+      console.log("DELETE ACCOUNT ERROR MESSAGE:", error?.message);
+      console.log("DELETE ACCOUNT ERROR DETAILS:", error?.details);
+
+      showAlert({
+        type: "error",
+        title: "Hesap silinemedi",
+        message:
+          error?.details ||
+          error?.message ||
+          "Hesabın silinirken bir sorun oluştu. Lütfen tekrar dene.",
+      });
+    } finally {
+      setDeleteAccountLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -207,6 +248,166 @@ export default function ProfileScreen() {
 
         <Animated.View layout={settingsLayoutTransition}>
           <AppInfoCard />
+        </Animated.View>
+
+        <Animated.View layout={settingsLayoutTransition}>
+          <SettingsSectionAccordion
+            title="Hesabı Sil"
+            description="Hesabını ve hesabına bağlı verileri kalıcı olarak sil."
+            iconName="trash-outline"
+            iconColor={colors.danger}
+            iconBackgroundColor={colors.dangerSoft}
+            iconBorderColor={alpha(colors.danger, 0.18)}
+            expanded={expandedSetting === "deleteAccount"}
+            onPress={() => toggleSetting("deleteAccount")}
+            colors={colors}
+          >
+            <View
+              style={{
+                backgroundColor: colors.elevatedCard,
+                borderRadius: 22,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: alpha(colors.danger, 0.18),
+                gap: 14,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}
+              >
+                <View
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 15,
+                    backgroundColor: colors.dangerSoft,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons
+                    name="warning-outline"
+                    size={21}
+                    color={colors.danger}
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: colors.text,
+                      fontSize: 15,
+                      fontWeight: "900",
+                    }}
+                  >
+                    Hesabını kalıcı olarak sil
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: colors.mutedText,
+                      fontSize: 13,
+                      fontWeight: "600",
+                      lineHeight: 19,
+                      marginTop: 5,
+                    }}
+                  >
+                    Hesabını sildiğinde profil bilgilerin, oluşturduğun sınıflar ve
+                    öğrenci takip bağlantıların kalıcı olarak kaldırılır.
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: 18,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: colors.softBorder,
+                  gap: 8,
+                }}
+              >
+                <DeleteAccountInfoRow
+                  text="Oluşturduğun sınıflar kaldırılır."
+                  colors={colors}
+                />
+
+                <DeleteAccountInfoRow
+                  text="Takip ettiğin öğrencilerle olan bağlantıların kaldırılır."
+                  colors={colors}
+                />
+
+                <DeleteAccountInfoRow
+                  text="Öğrencilerin kendi hesapları ve analiz sonuçları silinmez."
+                  colors={colors}
+                />
+
+                <DeleteAccountInfoRow
+                  text="Hesabına ait varsa kişisel dosyalar ve analiz kayıtları silinir."
+                  colors={colors}
+                />
+
+                <DeleteAccountInfoRow
+                  text="Bu işlem geri alınamaz."
+                  danger
+                  colors={colors}
+                />
+              </View>
+
+              <Pressable
+                onPress={() => {
+                  showAlert({
+                    type: "error",
+                    title: "Hesabını silmek istediğinden emin misin?",
+                    message:
+                      "Hesabın, oluşturduğun sınıflar ve öğrenci takip bağlantıların kalıcı olarak silinecek. Öğrencilerin hesapları silinmeyecek. Bu işlem geri alınamaz.",
+                    primaryActionLabel: "Kalıcı Olarak Sil",
+                    onPrimaryAction: () => {
+                      void handleDeleteAccount();
+                    },
+                  });
+                }}
+                disabled={deleteAccountLoading}
+                style={({ pressed }) => ({
+                  height: 52,
+                  borderRadius: 18,
+                  backgroundColor: colors.danger,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  gap: 9,
+                  opacity: pressed || deleteAccountLoading ? 0.78 : 1,
+                })}
+              >
+                {deleteAccountLoading ? (
+                  <ActivityIndicator color={colors.primaryForeground} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="trash-outline"
+                      size={19}
+                      color={colors.primaryForeground}
+                    />
+
+                    <Text
+                      style={{
+                        color: colors.primaryForeground,
+                        fontSize: 14,
+                        fontWeight: "900",
+                      }}
+                    >
+                      Hesabımı Sil
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </SettingsSectionAccordion>
         </Animated.View>
 
         <Animated.View layout={settingsLayoutTransition}>
