@@ -30,6 +30,25 @@ type ProcessingStep = {
   progress: number;
 };
 
+const STEP_DISPLAY_MS = 450;
+
+const PROCESSING_STATUS_ORDER = [
+  "uploading",
+  "queued",
+  "processing",
+  "completed",
+] as const;
+
+type VisualProcessingStatus = (typeof PROCESSING_STATUS_ORDER)[number];
+
+function getStatusIndex(status?: string) {
+  const index = PROCESSING_STATUS_ORDER.indexOf(
+    status as VisualProcessingStatus,
+  );
+
+  return index >= 0 ? index : 0;
+}
+
 function getProcessingStep(status?: string): ProcessingStep {
   if (status === "uploading") {
     return {
@@ -264,8 +283,16 @@ function NoteSkeletonItem({
 }
 
 export function ResultProcessingSkeleton({ colors, status, isDark }: Props) {
-  const step = useMemo(() => getProcessingStep(status), [status]);
+  const targetStepIndex = useMemo(() => getStatusIndex(status), [status]);
+
   const imageSource = isDark ? insightDarkImage : insightLightImage;
+
+  const [visualStepIndex, setVisualStepIndex] = useState(0);
+
+  const step = useMemo(
+    () => getProcessingStep(PROCESSING_STATUS_ORDER[visualStepIndex]),
+    [visualStepIndex],
+  );
 
   const [displayedStep, setDisplayedStep] = useState(step);
   const [progressBarWidth, setProgressBarWidth] = useState(0);
@@ -300,6 +327,26 @@ export function ResultProcessingSkeleton({ colors, status, isDark }: Props) {
       animation.stop();
     };
   }, [floatAnim]);
+
+  useEffect(() => {
+    if (visualStepIndex >= targetStepIndex) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setVisualStepIndex((current) => {
+        if (current >= targetStepIndex) {
+          return current;
+        }
+
+        return current + 1;
+      });
+    }, STEP_DISPLAY_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [visualStepIndex, targetStepIndex]);
 
 
 

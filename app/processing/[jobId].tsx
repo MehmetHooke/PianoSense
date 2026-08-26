@@ -16,7 +16,7 @@ import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 
-const MIN_PROCESSING_SCREEN_MS = 1400;
+const MIN_PROCESSING_SCREEN_MS = 2200;
 const COMPLETED_ANIMATION_MS = 1250;
 
 const completedAnimation = require("@/src/assets/animations/succes.json");

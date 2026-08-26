@@ -582,10 +582,13 @@ function RecordingScreenContent() {
                 console.log("[RecordingScreen] Screen prepare completed in playback mode");
             } catch (error) {
                 console.log("[RecordingScreen] Recording screen prepare error:", error);
+
+                
                 showAlert({
                     type: "error",
                     title: "Hata",
-                    message: "Kayıt ekranı hazırlanırken bir sorun oluştu.",
+                    message:
+                        "Kayıt ekranı hazırlanırken bir sorun oluştu.",
                 });
             } finally {
                 setOriginalLoading(false);
