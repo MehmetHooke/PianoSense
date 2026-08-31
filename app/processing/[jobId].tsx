@@ -21,7 +21,6 @@ const COMPLETED_ANIMATION_MS = 1250;
 
 const completedAnimation = require("@/src/assets/animations/succes.json");
 
-const processingDrumSound = require("@/src/assets/sound/processingDrum.wav");
 const processingCompleteSound = require("@/src/assets/sound/processingComplete.wav");
 
 export default function ProcessingScreen() {
@@ -52,7 +51,7 @@ function ProcessingScreenContent() {
   const [completionSoundFinished, setCompletionSoundFinished] =
     useState(false);
 
-  const drumPlayer = useAudioPlayer(processingDrumSound);
+
   const completePlayer = useAudioPlayer(processingCompleteSound);
 
   const completePlayerStatus = useAudioPlayerStatus(completePlayer);
@@ -107,50 +106,21 @@ function ProcessingScreenContent() {
   }, []);
 
   // ---------------------------------------------------------
-  // Start processing drum loop
+  // Prepare audio mode for completion sound
   // ---------------------------------------------------------
 
   useEffect(() => {
-    let cancelled = false;
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      allowsRecording: false,
+      shouldRouteThroughEarpiece: false,
+      shouldPlayInBackground: false,
+      interruptionMode: "doNotMix",
+    }).catch((error) => {
+      console.log("[ProcessingScreen] Audio mode error:", error);
+    });
+  }, []);
 
-    async function startProcessingDrum() {
-      try {
-        await setAudioModeAsync({
-          playsInSilentMode: true,
-          allowsRecording: false,
-          shouldRouteThroughEarpiece: false,
-          shouldPlayInBackground: false,
-          interruptionMode: "doNotMix",
-        });
-
-        if (cancelled) return;
-
-        // Analiz biz audio mode hazırlanırken tamamlanmış olabilir.
-        // Böyle bir durumda davulu sonradan başlatma.
-        if (completionStartedRef.current) return;
-
-        drumPlayer.loop = true;
-        drumPlayer.seekTo(0);
-        drumPlayer.play();
-
-        console.log("[ProcessingScreen] Drum loop started");
-      } catch (error) {
-        console.log("[ProcessingScreen] Start drum sound error:", error);
-      }
-    }
-
-    startProcessingDrum();
-
-    return () => {
-      cancelled = true;
-
-      try {
-        drumPlayer.pause();
-      } catch {
-        // Ignore cleanup audio errors.
-      }
-    };
-  }, [drumPlayer]);
 
   // ---------------------------------------------------------
   // Listen analysis job
@@ -169,7 +139,7 @@ function ProcessingScreenContent() {
 
         if (!updatedJob) {
           try {
-            drumPlayer.pause();
+
             completePlayer.pause();
           } catch {
             // Ignore audio cleanup errors.
@@ -197,16 +167,7 @@ function ProcessingScreenContent() {
             jobId,
           });
 
-          // Önce davulu kesin olarak durdur.
-          try {
-            drumPlayer.pause();
-            drumPlayer.loop = false;
-            drumPlayer.seekTo(0);
 
-            console.log("[ProcessingScreen] Drum loop stopped");
-          } catch (error) {
-            console.log("[ProcessingScreen] Stop drum error:", error);
-          }
 
           // Completion durumlarını sıfırla.
           setCompletedAnimationFinished(false);
@@ -242,8 +203,6 @@ function ProcessingScreenContent() {
 
         if (updatedJob.status === "failed") {
           try {
-            drumPlayer.pause();
-            drumPlayer.loop = false;
 
             completePlayer.pause();
             completePlayer.loop = false;
@@ -261,7 +220,7 @@ function ProcessingScreenContent() {
       },
       () => {
         try {
-          drumPlayer.pause();
+
           completePlayer.pause();
         } catch {
           // Ignore audio cleanup errors.
@@ -272,7 +231,7 @@ function ProcessingScreenContent() {
     );
 
     return unsubscribe;
-  }, [jobId, drumPlayer, completePlayer]);
+  }, [jobId, completePlayer]);
 
   // ---------------------------------------------------------
   // Completion animation timer
@@ -304,15 +263,15 @@ function ProcessingScreenContent() {
   // Detect actual end of completion sound
   // ---------------------------------------------------------
 
-useEffect(() => {
-  if (!completionStartedRef.current) return;
-  if (!showCompletedAnimation) return;
-  if (!completePlayerStatus.didJustFinish) return;
+  useEffect(() => {
+    if (!completionStartedRef.current) return;
+    if (!showCompletedAnimation) return;
+    if (!completePlayerStatus.didJustFinish) return;
 
-  console.log("[ProcessingScreen] Completion sound finished");
+    console.log("[ProcessingScreen] Completion sound finished");
 
-  setCompletionSoundFinished(true);
-}, [completePlayerStatus.didJustFinish, showCompletedAnimation]);
+    setCompletionSoundFinished(true);
+  }, [completePlayerStatus.didJustFinish, showCompletedAnimation]);
 
   // ---------------------------------------------------------
   // Navigate only when EVERYTHING is finished
@@ -337,9 +296,6 @@ useEffect(() => {
     navigateToResult,
   ]);
 
-  // ---------------------------------------------------------
-  // Full audio cleanup on screen unmount
-  // ---------------------------------------------------------
 
   useEffect(() => {
     return () => {
@@ -348,12 +304,6 @@ useEffect(() => {
         completedAnimationTimerRef.current = null;
       }
 
-      try {
-        drumPlayer.pause();
-        drumPlayer.loop = false;
-      } catch {
-        // Ignore cleanup audio errors.
-      }
 
       try {
         completePlayer.pause();
@@ -362,7 +312,7 @@ useEffect(() => {
         // Ignore cleanup audio errors.
       }
     };
-  }, [drumPlayer, completePlayer]);
+  }, [completePlayer]);
 
   // ---------------------------------------------------------
   // Error states
