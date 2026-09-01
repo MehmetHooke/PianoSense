@@ -156,7 +156,7 @@ function RecordingScreenContent() {
     const beatDurationMs = 60000 / bpm;
 
     const lastTickPlaybackGraceMs = isIOS
-        ? 210
+        ? 220
         : Math.min(
             180,
             Math.max(120, beatDurationMs * 0.2)
