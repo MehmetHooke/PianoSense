@@ -12,6 +12,8 @@ type Props = {
 export function RecentAnalysisList({ jobs, onOpenJob }: Props) {
   const { colors } = useAppTheme();
 
+  
+
   return (
     <View style={{ marginTop: 22 }}>
       <View

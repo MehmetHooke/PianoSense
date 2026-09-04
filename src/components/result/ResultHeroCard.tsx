@@ -1,5 +1,6 @@
 // src/components/result/ResultHeroCard.tsx
 
+import { getSongImageUrl } from "@/src/services/songImageService";
 import type { AppColors } from "@/src/theme/colors";
 import type { AnalysisJob } from "@/src/types/analysisJob";
 import {
@@ -9,12 +10,11 @@ import {
     getScoreTitle,
     safeNumber,
 } from "@/src/utils/resultUtils";
+import { getSongOrderFromId } from "@/src/utils/song";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { ActivityIndicator, Image, Text, View } from "react-native";
-
-const insightsLightImage = require("@/src/assets/images/insights/insights-light.png");
-const insightsDarkImage = require("@/src/assets/images/insights/insights-dark.png");
+import { Image } from "expo-image";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
 
 type Props = {
     job: AnalysisJob;
@@ -23,7 +23,6 @@ type Props = {
 };
 
 export function ResultHeroCard({ job, colors, feedback }: Props) {
-    const [imageLoading, setImageLoading] = useState(true);
 
     const result = job.result;
     if (!result) return null;
@@ -33,13 +32,49 @@ export function ResultHeroCard({ job, colors, feedback }: Props) {
     const scoreTitle = getScoreTitle(overallScore);
     const focusArea = getFocusArea(result);
 
-    /**
-     * ThemeProvider yapını görmediğim için burada mevcut token üzerinden karar veriyoruz.
-     * Eğer ThemeContext içinde `theme === "dark"` gibi bir alan varsa bunu prop olarak
-     * geçirmek daha temiz olur.
-     */
-    const isDarkTheme = colors.background === "#09090B";
-    const heroImage = isDarkTheme ? insightsDarkImage : insightsLightImage;
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadSongImage() {
+            const order = getSongOrderFromId(job.songId);
+
+            if (!order) {
+                if (isMounted) {
+                    setImageUrl(null);
+                    setImageLoading(false);
+                }
+                return;
+            }
+
+            try {
+                const url = await getSongImageUrl(order);
+
+                if (isMounted) {
+                    setImageUrl(url);
+                }
+            } catch (error) {
+                console.log("RESULT HERO IMAGE ERROR:", error);
+
+                if (isMounted) {
+                    setImageUrl(null);
+                }
+            } finally {
+                if (isMounted) {
+                    setImageLoading(false);
+                }
+            }
+        }
+
+        setImageLoading(true);
+        loadSongImage();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [job.songId]);
 
     return (
         <View style={{ marginBottom: 16 }}>
@@ -128,6 +163,9 @@ export function ResultHeroCard({ job, colors, feedback }: Props) {
                         style={{
                             width: 124,
                             height: 124,
+                            borderRadius: 28,
+                            backgroundColor: colors.primarySoft,
+                            overflow: "hidden",
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -136,18 +174,26 @@ export function ResultHeroCard({ job, colors, feedback }: Props) {
                             <ActivityIndicator size="small" color={colors.primary} />
                         ) : null}
 
-                        <Image
-                            source={heroImage}
-                            resizeMode="contain"
-                            onLoadStart={() => setImageLoading(true)}
-                            onLoadEnd={() => setImageLoading(false)}
-                            style={{
-                                position: "absolute",
-                                width: 132,
-                                height: 132,
-                                opacity: imageLoading ? 0 : 1,
-                            }}
-                        />
+                        {imageUrl ? (
+                            <Image
+                                source={{ uri: imageUrl }}
+                                style={{
+                                    width: "100%",
+                                    height: "100%",
+                                }}
+                                contentFit="cover"
+                                cachePolicy="memory-disk"
+                                transition={200}
+                            />
+                        ) : (
+                            !imageLoading && (
+                                <Ionicons
+                                    name="musical-notes"
+                                    size={42}
+                                    color={colors.primary}
+                                />
+                            )
+                        )}
                     </View>
                 </View>
 

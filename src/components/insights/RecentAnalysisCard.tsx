@@ -1,8 +1,12 @@
 // src\components\insights\RecentAnalysisCard.tsx
 import { getExerciseTitle } from "@/src/constants/exerciseNames";
+import { getSongImageUrl } from "@/src/services/songImageService";
 import { useAppTheme } from "@/src/theme/useTheme";
 import type { AnalysisJob } from "@/src/types/analysisJob";
+import { getSongOrderFromId } from "@/src/utils/song";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
 type Props = {
@@ -27,11 +31,11 @@ function formatDate(job: AnalysisJob) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+
 }
 
 function getJobTitle(job: AnalysisJob) {
-  const match = job.songId.match(/(\d+)$/);
-  const order = match ? Number(match[1]) : undefined;
+  const order = getSongOrderFromId(job.songId);
 
   if (order) {
     return getExerciseTitle(order);
@@ -60,6 +64,42 @@ function getScoreColor(score: number, colors: ReturnType<typeof useAppTheme>["co
 
 export function RecentAnalysisCard({ job, index, onPress }: Props) {
   const { colors } = useAppTheme();
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadImage() {
+      const order = getSongOrderFromId(job.songId);
+
+      if (!order) {
+        if (isMounted) {
+          setImageUrl(null);
+        }
+        return;
+      }
+
+      try {
+        const url = await getSongImageUrl(order);
+
+        if (isMounted) {
+          setImageUrl(url);
+        }
+      } catch (error) {
+        console.log("RECENT ANALYSIS IMAGE ERROR:", error);
+
+        if (isMounted) {
+          setImageUrl(null);
+        }
+      }
+    }
+
+    loadImage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [job.songId]);
 
   const score = job.result?.overallScore ?? 0;
   const pitchScore = job.result?.pitchScore ?? 0;
@@ -97,19 +137,33 @@ export function RecentAnalysisCard({ job, index, onPress }: Props) {
             height: 52,
             borderRadius: 19,
             backgroundColor: colors.primarySoft,
+            overflow: "hidden",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Text
-            style={{
-              color: colors.primary,
-              fontSize: 18,
-              fontWeight: "900",
-            }}
-          >
-            {index + 1}
-          </Text>
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
+            />
+          ) : (
+            <Text
+              style={{
+                color: colors.primary,
+                fontSize: 18,
+                fontWeight: "900",
+              }}
+            >
+              {index + 1}
+            </Text>
+          )}
         </View>
 
         <View style={{ flex: 1 }}>
