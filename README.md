@@ -1,6 +1,6 @@
-# Pianomla Baş Başa
+# Piyanomla Baş Başa
 
-Pianomla Baş Başa , piyano ogrencilerinin kisa egzersiz kayitlarini analiz ederek gelisimlerini takip etmeyi hedefleyen bir Expo/React Native uygulamasidir. Uygulama; ogrenci, ogretmen ve veli olmak uzere uc farkli rol etrafinda kurgulanmistir. Ogrenci egzersiz secip kayit alir, kaydini analize gonderir ve nota/zamanlama bazli sonucunu gorur. Ogretmen ogrencileri ve siniflari takip eder. Veli ise cocugunun son calismalarini ve genel ilerlemesini izler.
+Piyanomla Baş Başa , piyano ogrencilerinin kisa egzersiz kayitlarini analiz ederek gelisimlerini takip etmeyi hedefleyen bir Expo/React Native uygulamasidir. Uygulama; ogrenci, ogretmen ve veli olmak uzere uc farkli rol etrafinda kurgulanmistir. Ogrenci egzersiz secip kayit alir, kaydini analize gonderir ve nota/zamanlama bazli sonucunu gorur. Ogretmen ogrencileri ve siniflari takip eder. Veli ise cocugunun son calismalarini ve genel ilerlemesini izler.
 
 Bu repo mobil istemciyi, Firebase Functions katmanini ve Firebase guvenlik/yapilandirma dosyalarini icerir. Ses analizini gercekten yapan Cloud Run servisi bu repo icinde bulunmuyor; uygulama o servise Cloud Tasks uzerinden is gonderiyor.
 

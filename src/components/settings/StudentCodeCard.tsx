@@ -84,7 +84,7 @@ export function StudentCodeCard({ studentCode }: Props) {
                                 textTransform: "uppercase",
                             }}
                         >
-                            Pianomla Baş Başa ID
+                            Piyanomla Baş Başa ID
                         </Text>
 
                         <Text

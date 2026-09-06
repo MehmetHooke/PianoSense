@@ -100,7 +100,7 @@ export default function LoginScreen() {
                     textAlign: "center",
                   }}
                 >
-                  Pianomla Baş Başa'ya hoş geldin
+                  Piyanomla Baş Başa'ya hoş geldin
                 </Text>
 
                 <Text

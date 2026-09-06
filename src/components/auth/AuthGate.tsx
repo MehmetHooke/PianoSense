@@ -82,7 +82,7 @@ export function AuthLoadingScreen() {
           marginBottom: 8,
         }}
       >
-        Pianomla Baş Başa
+        Piyanomla Baş Başa
       </Text>
 
       <Text

@@ -54,7 +54,7 @@ export function AppInfoCard() {
               fontWeight: "900",
             }}
           >
-            Pianomla Baş Başa
+            Piyanomla Baş Başa
           </Text>
 
           <Text
