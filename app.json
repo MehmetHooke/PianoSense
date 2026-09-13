@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "pianosense",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.piyanomlabasbasa.app",
@@ -21,7 +21,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#F8F7FF"
       },
-      "edgeToEdgeEnabled": true,
+
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.RECORD_AUDIO",

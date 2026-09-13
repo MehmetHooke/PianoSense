@@ -56,6 +56,7 @@ function RecordingScreenContent() {
 
     const isIOS = Platform.OS === "ios";
 
+
     const router = useRouter();
     const { songId } = useLocalSearchParams<{ songId: string }>();
 
@@ -89,6 +90,8 @@ function RecordingScreenContent() {
     const [originalPlayingUi, setOriginalPlayingUi] = useState(false);
     const [currentBeat, setCurrentBeat] = useState(1);
 
+    const [beatPulseKey, setBeatPulseKey] = useState(0);
+
     const [submitting, setSubmitting] = useState(false);
     const [submitStep, setSubmitStep] = useState<
         "idle" | "uploading" | "creatingJob"
@@ -107,6 +110,11 @@ function RecordingScreenContent() {
         { downloadFirst: true }
     );
     const tickWarmedUpRef = useRef(false);
+
+
+    function triggerVisualBeat() {
+        setBeatPulseKey((previous) => previous + 1);
+    }
 
     async function warmUpTickPlayerForAndroid() {
         if (isIOS) return;
@@ -213,27 +221,20 @@ function RecordingScreenContent() {
     }
 
     useEffect(() => {
-        const subscription = tickPlayer.addListener(
-            "playbackStatusUpdate",
-            (status) => {
-                if (status.didJustFinish && lastTickFinishedResolverRef.current) {
-                    console.log("[RecordingScreen] Last tick really finished", {
-                        currentTime: status.currentTime,
-                    });
+        if (
+            tickStatus.didJustFinish &&
+            lastTickFinishedResolverRef.current
+        ) {
+            console.log("[RecordingScreen] Last tick really finished", {
+                currentTime: tickStatus.currentTime,
+            });
 
-                    const resolve = lastTickFinishedResolverRef.current;
-                    lastTickFinishedResolverRef.current = null;
+            const resolve = lastTickFinishedResolverRef.current;
+            lastTickFinishedResolverRef.current = null;
 
-                    resolve();
-                }
-
-            }
-        );
-
-        return () => {
-            subscription.remove();
-        };
-    }, [tickPlayer]);
+            resolve();
+        }
+    }, [tickStatus.didJustFinish, tickStatus.currentTime]);
 
 
     async function playTick(beat: number) {
@@ -283,7 +284,9 @@ function RecordingScreenContent() {
     function startSilentVisualMetronome() {
         clearVisualMetronomeTimer();
 
+        // Count-in bittikten sonraki ilk sessiz vuruş.
         setCurrentBeat(1);
+        triggerVisualBeat();
 
         console.log("[RecordingScreen] Silent visual metronome started", {
             beatDurationMs,
@@ -298,6 +301,8 @@ function RecordingScreenContent() {
 
                 return previousBeat + 1;
             });
+
+            triggerVisualBeat();
         }, beatDurationMs);
     }
 
@@ -721,6 +726,8 @@ function RecordingScreenContent() {
         // Görsel beat her vuruşta güncellensin.
         // Son beat dahil.
         setCurrentBeat(beat);
+
+        triggerVisualBeat();
 
         if (isLastBeat) {
             lastAudibleTickAtRef.current = tickPlayRequestedAt;
@@ -1627,6 +1634,7 @@ function RecordingScreenContent() {
                 beatsPerMeasure={beatsPerMeasure}
                 beatsBeforeRecording={beatsBeforeRecording}
                 currentBeat={currentBeat}
+                beatPulseKey={beatPulseKey}
                 phase={recordingPhase}
                 disabled={!permissionGranted || submitting}
                 durationSeconds={durationSeconds}

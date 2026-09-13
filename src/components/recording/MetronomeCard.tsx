@@ -1,14 +1,25 @@
 import type { AppColors } from "@/src/theme/colors";
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+    Animated,
+    Pressable,
+    Text,
+    View,
+} from "react-native";
 
-export type RecordingPhase = "idle" | "countIn" | "recording" | "recorded";
+export type RecordingPhase =
+    | "idle"
+    | "countIn"
+    | "recording"
+    | "recorded";
 
 type Props = {
     bpm: number;
     beatsPerMeasure: number;
     beatsBeforeRecording: number;
     currentBeat: number;
+    beatPulseKey: number;
     phase: RecordingPhase;
     disabled: boolean;
     durationSeconds: number;
@@ -19,6 +30,7 @@ type Props = {
 function getTitle(phase: RecordingPhase) {
     if (phase === "countIn") return "Hazırlan";
     if (phase === "recorded") return "Kayıt tamamlandı";
+
     return "Hazırlık";
 }
 
@@ -48,6 +60,7 @@ function getButtonLabel(phase: RecordingPhase) {
     if (phase === "countIn") return "Hazırlığı İptal Et";
     if (phase === "recording") return "Kaydı Durdur";
     if (phase === "recorded") return "Yeniden Kaydet";
+
     return "Kayda Başla";
 }
 
@@ -55,6 +68,7 @@ function getIconName(phase: RecordingPhase) {
     if (phase === "countIn") return "timer";
     if (phase === "recording") return "radio-button-on";
     if (phase === "recorded") return "checkmark-circle";
+
     return "mic";
 }
 
@@ -63,6 +77,7 @@ export function MetronomeCard({
     beatsPerMeasure,
     beatsBeforeRecording,
     currentBeat,
+    beatPulseKey,
     phase,
     disabled,
     durationSeconds,
@@ -72,6 +87,120 @@ export function MetronomeCard({
     const isCountIn = phase === "countIn";
     const isRecording = phase === "recording";
     const isRecorded = phase === "recorded";
+
+    /*
+     * Dış kart scale efekti.
+     */
+    const cardScale = useRef(
+        new Animated.Value(1)
+    ).current;
+
+    /*
+     * Dış kart glow efekti.
+     *
+     * Artık backgroundColor / borderColor interpolate etmiyoruz.
+     * Bunun yerine sabit renkli bir overlay'in opacity'sini değiştiriyoruz.
+     */
+    const outerGlowOpacity = useRef(
+        new Animated.Value(0)
+    ).current;
+
+    /*
+     * İçteki beat kartının sadece border efekti.
+     */
+    const innerBorderOpacity = useRef(
+        new Animated.Value(0)
+    ).current;
+
+    useEffect(() => {
+        /*
+         * Count-in veya recording değilsek
+         * bütün animasyonları normal hale getir.
+         */
+        if (!isCountIn && !isRecording) {
+            cardScale.stopAnimation();
+            outerGlowOpacity.stopAnimation();
+            innerBorderOpacity.stopAnimation();
+
+            cardScale.setValue(1);
+            outerGlowOpacity.setValue(0);
+            innerBorderOpacity.setValue(0);
+
+            return;
+        }
+
+        /*
+         * Yeni beat geldiğinde eski animasyonu kes
+         * ve sıfırdan başlat.
+         */
+        cardScale.stopAnimation();
+        outerGlowOpacity.stopAnimation();
+        innerBorderOpacity.stopAnimation();
+
+        cardScale.setValue(1);
+        outerGlowOpacity.setValue(0);
+        innerBorderOpacity.setValue(0);
+
+        Animated.parallel([
+            /*
+             * Dış kart hafif heartbeat yapıyor.
+             */
+            Animated.sequence([
+                Animated.timing(cardScale, {
+                    toValue: 1.018,
+                    duration: 80,
+                    useNativeDriver: true,
+                }),
+
+                Animated.timing(cardScale, {
+                    toValue: 1,
+                    duration: 180,
+                    useNativeDriver: true,
+                }),
+            ]),
+
+            /*
+             * Dış glow.
+             */
+            Animated.sequence([
+                Animated.timing(outerGlowOpacity, {
+                    toValue: 1,
+                    duration: 60,
+                    useNativeDriver: true,
+                }),
+
+                Animated.timing(outerGlowOpacity, {
+                    toValue: 0,
+                    duration: 260,
+                    useNativeDriver: true,
+                }),
+            ]),
+
+            /*
+             * İç kart border glow.
+             */
+            Animated.sequence([
+                Animated.timing(innerBorderOpacity, {
+                    toValue: 1,
+                    duration: 60,
+                    useNativeDriver: true,
+                }),
+
+                Animated.timing(innerBorderOpacity, {
+                    toValue: 0,
+                    duration: 260,
+                    useNativeDriver: true,
+                }),
+            ]),
+        ]).start();
+    }, [
+        beatPulseKey,
+        isCountIn,
+        isRecording,
+        cardScale,
+        outerGlowOpacity,
+        innerBorderOpacity,
+    ]);
 
     const iconColor = isRecording
         ? colors.danger
@@ -91,22 +220,78 @@ export function MetronomeCard({
             ? colors.danger
             : colors.primary;
 
+    const beatColor = isRecording
+        ? colors.danger
+        : colors.primary;
+
+    const beatSoftColor = isRecording
+        ? colors.dangerSoft
+        : colors.primarySoft;
+
     return (
-        <View
+        <Animated.View
             style={{
                 backgroundColor: colors.card,
+
                 borderRadius: 28,
                 padding: 20,
+
                 borderWidth: 1,
                 borderColor: colors.border,
+
                 marginBottom: 16,
+
                 shadowColor: colors.shadow,
                 shadowOpacity: 1,
                 shadowRadius: 18,
-                shadowOffset: { width: 0, height: 10 },
+
+                shadowOffset: {
+                    width: 0,
+                    height: 10,
+                },
+
                 elevation: 2,
+
+                transform: [
+                    {
+                        scale: cardScale,
+                    },
+                ],
+
+                /*
+                 * Overlay'in kart sınırları dışına taşmaması için.
+                 */
+                overflow: "hidden",
             }}
         >
+            {/*
+             * DIŞ KART GLOW OVERLAY
+             *
+             * Renk animasyonu yok.
+             * Sadece opacity native tarafta değişiyor.
+             */}
+            {isCountIn || isRecording ? (
+                <Animated.View
+                    pointerEvents="none"
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+
+                        borderRadius: 28,
+
+                        backgroundColor: beatSoftColor,
+
+                        borderWidth: 2,
+                        borderColor: beatColor,
+
+                        opacity: outerGlowOpacity,
+                    }}
+                />
+            ) : null}
+
             <View
                 style={{
                     alignItems: "center",
@@ -117,67 +302,107 @@ export function MetronomeCard({
                     style={{
                         width: 55,
                         height: 55,
+
                         borderRadius: 30,
-                        backgroundColor: iconBackgroundColor,
+
+                        backgroundColor:
+                            iconBackgroundColor,
+
                         alignItems: "center",
                         justifyContent: "center",
+
                         borderWidth: 1,
-                        borderColor: colors.softBorder,
+                        borderColor:
+                            colors.softBorder,
+
                         marginBottom: 16,
                     }}
                 >
-                    <Ionicons name={getIconName(phase)} size={30} color={iconColor} />
+                    <Ionicons
+                        name={getIconName(phase)}
+                        size={30}
+                        color={iconColor}
+                    />
                 </View>
 
                 <Text
                     style={{
                         textAlign: "center",
+
                         fontSize: 19,
                         fontWeight: "900",
-                        color: isRecording ? colors.danger : colors.text,
+
+                        color: isRecording
+                            ? colors.danger
+                            : colors.text,
+
                         marginBottom: 6,
                     }}
                 >
-                    {isRecording ? `${durationSeconds} sn` : getTitle(phase)}
+                    {isRecording
+                        ? `${durationSeconds} sn`
+                        : getTitle(phase)}
                 </Text>
 
                 <Text
                     style={{
                         textAlign: "center",
+
                         color: colors.mutedText,
+
                         lineHeight: 21,
                         fontSize: 14,
+
                         paddingHorizontal: 4,
                     }}
                 >
-                    {getDescription({ phase, beatsBeforeRecording })}
+                    {getDescription({
+                        phase,
+                        beatsBeforeRecording,
+                    })}
                 </Text>
             </View>
 
             <View
                 style={{
-                    backgroundColor: colors.surface,
+                    backgroundColor:
+                        colors.surface,
+
                     borderRadius: 22,
+
                     padding: 16,
+
                     borderWidth: 1,
-                    borderColor: colors.softBorder,
+                    borderColor:
+                        colors.softBorder,
+
                     marginBottom: 16,
                 }}
             >
                 <View
                     style={{
                         flexDirection: "row",
-                        justifyContent: "space-between",
+
+                        justifyContent:
+                            "space-between",
+
                         gap: 12,
                         marginBottom: 14,
                     }}
                 >
-                    <View style={{ flex: 1 }}>
+                    <View
+                        style={{
+                            flex: 1,
+                        }}
+                    >
                         <Text
                             style={{
-                                color: colors.subtleText,
+                                color:
+                                    colors.subtleText,
+
                                 fontSize: 12,
                                 fontWeight: "800",
+
                                 marginBottom: 4,
                             }}
                         >
@@ -187,6 +412,7 @@ export function MetronomeCard({
                         <Text
                             style={{
                                 color: colors.text,
+
                                 fontSize: 18,
                                 fontWeight: "900",
                             }}
@@ -195,13 +421,21 @@ export function MetronomeCard({
                         </Text>
                     </View>
 
-                    <View style={{ flex: 1 }}>
+                    <View
+                        style={{
+                            flex: 1,
+                        }}
+                    >
                         <Text
                             style={{
-                                color: colors.subtleText,
+                                color:
+                                    colors.subtleText,
+
                                 fontSize: 12,
                                 fontWeight: "800",
+
                                 marginBottom: 4,
+
                                 textAlign: "right",
                             }}
                         >
@@ -211,8 +445,10 @@ export function MetronomeCard({
                         <Text
                             style={{
                                 color: colors.text,
+
                                 fontSize: 18,
                                 fontWeight: "900",
+
                                 textAlign: "right",
                             }}
                         >
@@ -221,36 +457,79 @@ export function MetronomeCard({
                     </View>
                 </View>
 
+                {/*
+                 * İÇ BEAT KARTI
+                 *
+                 * Kendi şekli / background'u değişmiyor.
+                 * Scale yok.
+                 * Sadece üstündeki border overlay yanıp sönüyor.
+                 */}
                 <View
                     style={{
-
                         height: 72,
+
                         borderRadius: 20,
-                        backgroundColor: colors.card,
-                        borderWidth: 1,
-                        borderColor: colors.border,
+
+                        backgroundColor:
+                            colors.card,
+
+                        borderWidth: 1.5,
+                        borderColor:
+                            colors.border,
+
                         alignItems: "center",
                         justifyContent: "center",
+
                         overflow: "hidden",
                     }}
                 >
+                    {isCountIn || isRecording ? (
+                        <Animated.View
+                            pointerEvents="none"
+                            style={{
+                                position: "absolute",
+
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+
+                                borderRadius: 20,
+
+                                borderWidth: 2,
+
+                                borderColor:
+                                    beatColor,
+
+                                opacity:
+                                    innerBorderOpacity,
+                            }}
+                        />
+                    ) : null}
+
                     {isCountIn ? (
                         <>
                             <Text
                                 style={{
-                                    color: colors.primary,
+                                    color:
+                                        colors.primary,
+
                                     fontSize: 32,
                                     fontWeight: "900",
                                 }}
                             >
-                                {currentBeat} / {beatsBeforeRecording}
+                                {currentBeat} /{" "}
+                                {beatsBeforeRecording}
                             </Text>
 
                             <Text
                                 style={{
-                                    color: colors.subtleText,
+                                    color:
+                                        colors.subtleText,
+
                                     fontSize: 12,
                                     fontWeight: "700",
+
                                     marginTop: 2,
                                 }}
                             >
@@ -261,19 +540,25 @@ export function MetronomeCard({
                         <>
                             <Text
                                 style={{
-                                    color: colors.danger,
+                                    color:
+                                        colors.danger,
+
                                     fontSize: 32,
                                     fontWeight: "900",
                                 }}
                             >
-                                {currentBeat} / {beatsPerMeasure}
+                                {currentBeat} /{" "}
+                                {beatsPerMeasure}
                             </Text>
 
                             <Text
                                 style={{
-                                    color: colors.subtleText,
+                                    color:
+                                        colors.subtleText,
+
                                     fontSize: 12,
                                     fontWeight: "700",
+
                                     marginTop: 2,
                                 }}
                             >
@@ -282,18 +567,22 @@ export function MetronomeCard({
                         </>
                     ) : isRecorded ? (
                         <>
-
                             <Ionicons
                                 name="checkmark-circle"
                                 size={25}
-                                color={colors.success}
+                                color={
+                                    colors.success
+                                }
                             />
 
                             <Text
                                 style={{
-                                    color: colors.successForeground,
+                                    color:
+                                        colors.successForeground,
+
                                     fontSize: 12,
                                     fontWeight: "800",
+
                                     marginTop: 4,
                                 }}
                             >
@@ -305,49 +594,74 @@ export function MetronomeCard({
                             <Ionicons
                                 name="musical-note"
                                 size={25}
-                                color={colors.primary}
+                                color={
+                                    colors.primary
+                                }
                             />
 
                             <Text
                                 style={{
-                                    color: colors.subtleText,
+                                    color:
+                                        colors.subtleText,
+
                                     fontSize: 12,
                                     fontWeight: "800",
+
                                     marginTop: 4,
                                 }}
                             >
-                                {beatsBeforeRecording} vuruş hazırlık
+                                {beatsBeforeRecording}{" "}
+                                vuruş hazırlık
                             </Text>
                         </>
                     )}
                 </View>
+
                 <View
                     style={{
                         marginTop: 12,
+
                         flexDirection: "row",
                         justifyContent: "center",
+
                         gap: 8,
                     }}
                 >
                     {Array.from({
-                        length: isRecording ? beatsPerMeasure : beatsBeforeRecording,
+                        length: isRecording
+                            ? beatsPerMeasure
+                            : beatsBeforeRecording,
                     }).map((_, index) => {
-                        const beatNumber = index + 1;
+                        const beatNumber =
+                            index + 1;
+
                         const isActiveBeat =
-                            (isCountIn || isRecording) && currentBeat === beatNumber;
+                            (
+                                isCountIn ||
+                                isRecording
+                            ) &&
+                            currentBeat ===
+                                beatNumber;
 
                         return (
                             <View
                                 key={beatNumber}
                                 style={{
-                                    width: isActiveBeat ? 28 : 10,
+                                    width:
+                                        isActiveBeat
+                                            ? 28
+                                            : 10,
+
                                     height: 10,
+
                                     borderRadius: 999,
-                                    backgroundColor: isActiveBeat
-                                        ? isRecording
-                                            ? colors.danger
-                                            : colors.primary
-                                        : colors.progressTrack,
+
+                                    backgroundColor:
+                                        isActiveBeat
+                                            ? isRecording
+                                                ? colors.danger
+                                                : colors.primary
+                                            : colors.progressTrack,
                                 }}
                             />
                         );
@@ -359,13 +673,25 @@ export function MetronomeCard({
                 onPress={onPrimaryPress}
                 disabled={disabled}
                 style={({ pressed }) => ({
-                    backgroundColor: buttonBackgroundColor,
+                    backgroundColor:
+                        buttonBackgroundColor,
+
                     borderRadius: 18,
+
                     paddingVertical: 16,
+
                     alignItems: "center",
-                    opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+
+                    opacity: disabled
+                        ? 0.5
+                        : pressed
+                            ? 0.85
+                            : 1,
+
                     flexDirection: "row",
+
                     justifyContent: "center",
+
                     gap: 8,
                 })}
             >
@@ -380,12 +706,16 @@ export function MetronomeCard({
                                     : "mic"
                     }
                     size={19}
-                    color={colors.primaryForeground}
+                    color={
+                        colors.primaryForeground
+                    }
                 />
 
                 <Text
                     style={{
-                        color: colors.primaryForeground,
+                        color:
+                            colors.primaryForeground,
+
                         fontWeight: "900",
                         fontSize: 16,
                     }}
@@ -393,6 +723,6 @@ export function MetronomeCard({
                     {getButtonLabel(phase)}
                 </Text>
             </Pressable>
-        </View>
+        </Animated.View>
     );
 }

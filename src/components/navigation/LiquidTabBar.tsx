@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { BlurView } from "expo-blur";
+import type { BottomTabBarProps } from "expo-router/build/react-navigation/bottom-tabs/types";
 import { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import Animated, {
