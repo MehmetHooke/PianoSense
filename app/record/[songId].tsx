@@ -1332,7 +1332,40 @@ function RecordingScreenContent() {
                     }
                 );
             }
+
+            const nativeStatusBeforeStop = audioRecorder.getStatus();
+
+            console.log(
+                "[RecordingScreen][iOS] Native recorder status before stop",
+                {
+                    isRecording: nativeStatusBeforeStop.isRecording,
+                    canRecord: nativeStatusBeforeStop.canRecord,
+                    durationMillis: nativeStatusBeforeStop.durationMillis,
+                    hookDurationMillis: recorderState.durationMillis,
+                    uri: audioRecorder.uri,
+                }
+            );
+
+            const nativeDurationMillis =
+                nativeStatusBeforeStop.durationMillis ?? 0;
+
             await audioRecorder.stop();
+
+            if (isIOS && nativeDurationMillis < 1000) {
+
+
+                setRecordedUri(null);
+                setRecordedDurationMillis(0);
+                setRecordingPhase("idle");
+
+                showAlert({
+                    type: "error",
+                    title: "Kayıt alınamadı",
+                    message: "Ses kaydı düzgün oluşturulamadı. Lütfen tekrar deneyin.",
+                });
+
+                return;
+            }
 
             if (isIOS) {
                 console.log(
