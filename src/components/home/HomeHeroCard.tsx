@@ -150,7 +150,7 @@ export function HomeHeroCard({ onStartPractice }: Props) {
         <Pressable
           onPress={onStartPractice}
           style={({ pressed }) => ({
-            marginTop: isWide ? 20 : "auto",
+            marginTop:"auto",
             backgroundColor: pressed ? colors.primaryPressed : colors.primary,
             borderRadius: 18,
             
