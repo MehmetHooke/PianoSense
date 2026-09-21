@@ -90,6 +90,18 @@ function RecordingScreenContent() {
     const [originalPlayingUi, setOriginalPlayingUi] = useState(false);
     const [currentBeat, setCurrentBeat] = useState(1);
 
+    /*
+     * Silent mode UI'ını MetronomeCard tarafında sonraki adımda bağlayacağız.
+     * Şimdilik mevcut davranış bozulmasın diye default false.
+     */
+    const [isMetronomeSilent, setIsMetronomeSilent] = useState(false);
+
+    /*
+     * Özellikle iOS silent mode'da:
+     * Audio session + recorder prepare tamamlanana kadar true.
+     */
+    const [isPreparingRecording, setIsPreparingRecording] = useState(false);
+
     const [beatPulseKey, setBeatPulseKey] = useState(0);
 
     const [submitting, setSubmitting] = useState(false);
@@ -697,6 +709,323 @@ function RecordingScreenContent() {
         }
     }
 
+    function runSilentIOSCountInBeat(beat: number) {
+        if (!countInActiveRef.current) {
+            console.log(
+                "[RecordingScreen][iOS][Silent] Count-in beat ignored",
+                {
+                    beat,
+                    countInActive: countInActiveRef.current,
+                }
+            );
+
+            return;
+        }
+
+        const beatStartedAt = Date.now();
+        const isLastBeat = beat >= beatsBeforeRecording;
+
+        console.log(
+            "[RecordingScreen][iOS][Silent] Count-in beat",
+            {
+                beat,
+                beatsBeforeRecording,
+                beatDurationMs,
+                beatStartedAt,
+            }
+        );
+
+        /*
+         * Silent iOS count-in:
+         *
+         * Burada kesinlikle tickPlayer kullanmıyoruz.
+         * Recorder zaten count-in başlamadan önce hazırlanmış durumda.
+         */
+        setCurrentBeat(beat);
+        triggerVisualBeat();
+
+        if (isLastBeat) {
+            /*
+             * Son count-in beat'i başladı.
+             *
+             * Örneğin:
+             * 4 başladı -> bir beatDuration bekle ->
+             * sonraki 1 sınırında record().
+             */
+            const recordingTargetAtMs =
+                beatStartedAt + beatDurationMs;
+
+            console.log(
+                "[RecordingScreen][iOS][Silent] Last count-in beat started",
+                {
+                    beatStartedAt,
+                    recordingTargetAtMs,
+                    beatDurationMs,
+                    recorderPrepared:
+                        recorderPreparedRef.current,
+                    recorderStatus:
+                        audioRecorder.getStatus(),
+                }
+            );
+
+            const remainingMs = Math.max(
+                0,
+                recordingTargetAtMs - Date.now()
+            );
+
+            countInTimerRef.current = setTimeout(() => {
+                countInTimerRef.current = null;
+
+                if (!countInActiveRef.current) {
+                    console.log(
+                        "[RecordingScreen][iOS][Silent] Recording start cancelled before target"
+                    );
+
+                    return;
+                }
+
+                if (!recorderPreparedRef.current) {
+                    console.log(
+                        "[RecordingScreen][iOS][Silent] Recorder unexpectedly not prepared at target"
+                    );
+
+                    countInActiveRef.current = false;
+
+                    setRecordingPhase("idle");
+                    setCurrentBeat(1);
+
+                    showAlert({
+                        type: "warning",
+                        title: "Hata",
+                        message:
+                            "Kayıt hazırlığı tamamlanamadı. Lütfen tekrar deneyin.",
+                    });
+
+                    return;
+                }
+
+                try {
+                    const recordCalledAt = Date.now();
+
+                    console.log(
+                        "[RecordingScreen][iOS][Silent] Calling record at target",
+                        {
+                            recordingTargetAtMs,
+                            recordCalledAt,
+                            timingDifferenceMs:
+                                recordCalledAt -
+                                recordingTargetAtMs,
+                            statusBeforeRecord:
+                                audioRecorder.getStatus(),
+                        }
+                    );
+
+                    /*
+                     * Recorder çoktan hazır.
+                     * Burada artık yalnızca record() çağırıyoruz.
+                     */
+                    audioRecorder.record();
+
+                    countInActiveRef.current = false;
+
+                    setRecordingPhase("recording");
+
+                    /*
+                     * Count-in sonrası mevcut sessiz görsel
+                     * metronom sistemi devam ediyor.
+                     */
+                    startSilentVisualMetronome();
+
+                    console.log(
+                        "[RecordingScreen][iOS][Silent] Recording started",
+                        {
+                            recordCalledAt,
+                            recordingTargetAtMs,
+                            timingDifferenceMs:
+                                recordCalledAt -
+                                recordingTargetAtMs,
+                            uri: audioRecorder.uri,
+                            statusAfterRecord:
+                                audioRecorder.getStatus(),
+                        }
+                    );
+
+                    setTimeout(() => {
+                        console.log(
+                            "[RecordingScreen][iOS][Silent] Recorder status after start",
+                            audioRecorder.getStatus()
+                        );
+                    }, 200);
+                } catch (error) {
+                    console.log(
+                        "[RecordingScreen][iOS][Silent] record() failed:",
+                        error
+                    );
+
+                    countInActiveRef.current = false;
+                    recorderPreparedRef.current = false;
+
+                    clearMetronomeTimers();
+
+                    setRecordingPhase("idle");
+                    setCurrentBeat(1);
+
+                    showAlert({
+                        type: "warning",
+                        title: "Hata",
+                        message: "Kayıt başlatılamadı.",
+                    });
+                }
+            }, remainingMs);
+
+            return;
+        }
+
+        countInTimerRef.current = setTimeout(() => {
+            runSilentIOSCountInBeat(beat + 1);
+        }, beatDurationMs);
+    }
+
+    async function prepareIOSSilentRecordingAndStartCountIn() {
+        try {
+            console.log(
+                "[RecordingScreen][iOS][Silent] Recorder preparation started"
+            );
+
+            setIsPreparingRecording(true);
+
+            countInActiveRef.current = false;
+            recorderPreparedRef.current = false;
+
+            /*
+             * Silent modda artık playback session'a ihtiyacımız yok.
+             *
+             * Count-in başlamadan önce recording session'a geçiyoruz.
+             */
+            const audioModeStartedAt = Date.now();
+
+            await setAudioModeAsync({
+                playsInSilentMode: true,
+                allowsRecording: true,
+                shouldRouteThroughEarpiece: false,
+                shouldPlayInBackground: false,
+                interruptionMode: "doNotMix",
+            });
+
+            const audioModeFinishedAt = Date.now();
+
+            console.log(
+                "[RecordingScreen][iOS][Silent] Recording audio mode ready",
+                {
+                    audioModeDurationMs:
+                        audioModeFinishedAt -
+                        audioModeStartedAt,
+
+                    nativeStatus:
+                        audioRecorder.getStatus(),
+                }
+            );
+
+            /*
+             * Fresh recorder prepare.
+             *
+             * Count-in bundan SONRA başlayacak.
+             */
+            const prepareStartedAt = Date.now();
+
+            console.log(
+                "[RecordingScreen][iOS][Silent] Fresh recorder prepare started"
+            );
+
+            await audioRecorder.prepareToRecordAsync();
+
+            const prepareFinishedAt = Date.now();
+
+            recorderPreparedRef.current = true;
+
+            console.log(
+                "[RecordingScreen][iOS][Silent] Recorder prepared BEFORE count-in",
+                {
+                    prepareDurationMs:
+                        prepareFinishedAt -
+                        prepareStartedAt,
+
+                    totalPreparationDurationMs:
+                        prepareFinishedAt -
+                        audioModeStartedAt,
+
+                    status:
+                        audioRecorder.getStatus(),
+
+                    uri:
+                        audioRecorder.uri,
+                }
+            );
+
+            /*
+             * Recorder hazır.
+             *
+             * Müzikal zaman bundan sonra başlıyor.
+             */
+            setCurrentBeat(1);
+            setRecordingPhase("countIn");
+
+            countInActiveRef.current = true;
+
+            setIsPreparingRecording(false);
+
+            const firstBeatAt = Date.now();
+
+            console.log(
+                "[RecordingScreen][iOS][Silent] Starting count-in AFTER recorder preparation",
+                {
+                    firstBeatAt,
+                    bpm,
+                    beatsBeforeRecording,
+                    beatDurationMs,
+                }
+            );
+
+            runSilentIOSCountInBeat(1);
+        } catch (error) {
+            console.log(
+                "[RecordingScreen][iOS][Silent] Recorder preparation failed:",
+                error
+            );
+
+            countInActiveRef.current = false;
+            recorderPreparedRef.current = false;
+
+            clearMetronomeTimers();
+
+            setIsPreparingRecording(false);
+            setRecordingPhase("idle");
+            setCurrentBeat(1);
+
+            try {
+                await setAudioModeAsync({
+                    playsInSilentMode: true,
+                    allowsRecording: false,
+                    shouldRouteThroughEarpiece: false,
+                    shouldPlayInBackground: false,
+                    interruptionMode: "mixWithOthers",
+                });
+            } catch (audioModeError) {
+                console.log(
+                    "[RecordingScreen][iOS][Silent] Failed to restore playback audio mode:",
+                    audioModeError
+                );
+            }
+
+            showAlert({
+                type: "warning",
+                title: "Hata",
+                message:
+                    "Kayıt hazırlığı tamamlanamadı. Lütfen tekrar deneyin.",
+            });
+        }
+    }
+
     function runCountInBeat(beat: number) {
         if (!countInActiveRef.current) {
             console.log("[RecordingScreen] runCountInBeat ignored", {
@@ -1068,7 +1397,7 @@ function RecordingScreenContent() {
                 return;
             }
 
-            if (submitting) return;
+            if (submitting || isPreparingRecording) return;
 
             try {
                 originalPlayer.pause();
@@ -1092,6 +1421,29 @@ function RecordingScreenContent() {
             setRecordedUri(null);
             setRecordedDurationMillis(0);
             setCurrentBeat(1);
+
+            /*
+             * iOS + Silent
+             *
+             * Tamamen ayrı yol.
+             *
+             * Önce recorder hazırlanacak.
+             * Recorder hazır olduktan sonra count-in başlayacak.
+             */
+            if (isIOS && isMetronomeSilent) {
+                console.log(
+                    "[RecordingScreen][iOS][Silent] Silent mode selected"
+                );
+
+                await prepareIOSSilentRecordingAndStartCountIn();
+
+                return;
+            }
+
+            /*
+             * Buradan sonrası mevcut audible iOS
+             * ve Android akışı.
+             */
             setRecordingPhase("countIn");
 
             if (isIOS) {
@@ -1122,6 +1474,31 @@ function RecordingScreenContent() {
                 );
             } else {
                 // ANDROID KODUNU DEĞİŞTİRMİYORUZ.
+                /*
+                * Android timing sistemini değiştirmiyoruz.
+                *
+                * Silent modda WAV yine native olarak çalıyor,
+                * sadece volume 0.
+                *
+                * Böylece:
+                * didJustFinish
+                * waitForLastTickToFinish
+                * beginRecordingAfterCountIn
+                *
+                * akışı olduğu gibi kalıyor.
+                */
+                tickPlayer.volume =
+                    isMetronomeSilent ? 0 : 1;
+
+                console.log(
+                    "[RecordingScreen][Android] Count-in mode configured",
+                    {
+                        silentMode: isMetronomeSilent,
+                        tickVolume:
+                            isMetronomeSilent ? 0 : 1,
+                    }
+                );
+
                 await setAudioModeAsync({
                     playsInSilentMode: true,
                     allowsRecording: false,
@@ -1138,6 +1515,8 @@ function RecordingScreenContent() {
                         bpm,
                         beatsBeforeRecording,
                         beatDurationMs,
+                        silentMode:
+                            isMetronomeSilent,
                     }
                 );
             }
@@ -1441,7 +1820,21 @@ function RecordingScreenContent() {
     const handleMetronomePrimaryPress = () => {
         console.log("[RecordingScreen] Metronome primary pressed", {
             recordingPhase,
+            isPreparingRecording,
+            isMetronomeSilent,
         });
+
+        /*
+         * iOS silent prepare devam ederken
+         * ikinci kez start tetiklenmesini engelle.
+         */
+        if (isPreparingRecording) {
+            console.log(
+                "[RecordingScreen] Primary press ignored because recording preparation is active"
+            );
+
+            return;
+        }
 
         if (recordingPhase === "countIn") {
             cancelCountIn();
@@ -1459,7 +1852,19 @@ function RecordingScreenContent() {
     const handleBackPress = () => {
         console.log("[RecordingScreen] Back pressed", {
             recordingPhase,
+            isPreparingRecording,
         });
+
+        if (isPreparingRecording) {
+            showAlert({
+                type: "info",
+                title: "Kayıt hazırlanıyor",
+                message:
+                    "Kayıt hazırlığı tamamlanırken lütfen bekle.",
+            });
+
+            return;
+        }
 
         if (recordingPhase === "countIn") {
             showAlert({
@@ -1622,6 +2027,7 @@ function RecordingScreenContent() {
                 disabled={
                     !originalUrl ||
                     submitting ||
+                    isPreparingRecording ||
                     recordingPhase === "countIn" ||
                     recordingPhase === "recording"
                 }
@@ -1636,8 +2042,17 @@ function RecordingScreenContent() {
                 currentBeat={currentBeat}
                 beatPulseKey={beatPulseKey}
                 phase={recordingPhase}
-                disabled={!permissionGranted || submitting}
+                disabled={
+                    !permissionGranted ||
+                    submitting ||
+                    isPreparingRecording
+                }
                 durationSeconds={durationSeconds}
+
+                isMetronomeSilent={isMetronomeSilent}
+                isPreparingRecording={isPreparingRecording}
+                onSilentModeChange={setIsMetronomeSilent}
+
                 onPrimaryPress={handleMetronomePrimaryPress}
                 colors={colors}
             />
@@ -1647,6 +2062,7 @@ function RecordingScreenContent() {
             <SendToAnalysisButton
                 disabled={
                     !recordedUri ||
+                    isPreparingRecording ||
                     recordingPhase === "countIn" ||
                     recordingPhase === "recording" ||
                     submitting

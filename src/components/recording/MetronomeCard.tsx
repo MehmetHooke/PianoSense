@@ -1,11 +1,13 @@
 import type { AppColors } from "@/src/theme/colors";
+
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef } from "react";
 import {
+    ActivityIndicator,
     Animated,
     Pressable,
     Text,
-    View,
+    View
 } from "react-native";
 
 export type RecordingPhase =
@@ -23,6 +25,11 @@ type Props = {
     phase: RecordingPhase;
     disabled: boolean;
     durationSeconds: number;
+
+    isMetronomeSilent: boolean;
+    isPreparingRecording: boolean;
+    onSilentModeChange: (silent: boolean) => void;
+
     onPrimaryPress: () => void;
     colors: AppColors;
 };
@@ -37,12 +44,16 @@ function getTitle(phase: RecordingPhase) {
 function getDescription({
     phase,
     beatsBeforeRecording,
+    isMetronomeSilent,
 }: {
     phase: RecordingPhase;
     beatsBeforeRecording: number;
+    isMetronomeSilent: boolean;
 }) {
     if (phase === "countIn") {
-        return "Kayıt birazdan otomatik başlayacak. Vuruşları takip et.";
+        return isMetronomeSilent
+            ? "Kayıt birazdan otomatik başlayacak. Görsel vuruşları takip et."
+            : "Kayıt birazdan otomatik başlayacak. Vuruşları takip et.";
     }
 
     if (phase === "recording") {
@@ -53,7 +64,9 @@ function getDescription({
         return "Kaydın hazır. İstersen yeniden kaydedebilir veya analize gönderebilirsin.";
     }
 
-    return `Kayda bastığında önce ${beatsBeforeRecording} vuruş metronom duyacaksın. Sonra kayıt otomatik başlayacak.`;
+    return isMetronomeSilent
+        ? `Kayda bastığında önce ${beatsBeforeRecording} sessiz görsel vuruş göreceksin. Sonra kayıt otomatik başlayacak.`
+        : `Kayda bastığında önce ${beatsBeforeRecording} vuruş metronom duyacaksın. Sonra kayıt otomatik başlayacak.`;
 }
 
 function getButtonLabel(phase: RecordingPhase) {
@@ -81,6 +94,11 @@ export function MetronomeCard({
     phase,
     disabled,
     durationSeconds,
+
+    isMetronomeSilent,
+    isPreparingRecording,
+    onSilentModeChange,
+
     onPrimaryPress,
     colors,
 }: Props) {
@@ -328,41 +346,144 @@ export function MetronomeCard({
                 <Text
                     style={{
                         textAlign: "center",
-
-                        fontSize: 19,
-                        fontWeight: "900",
-
-                        color: isRecording
-                            ? colors.danger
-                            : colors.text,
-
-                        marginBottom: 6,
-                    }}
-                >
-                    {isRecording
-                        ? `${durationSeconds} sn`
-                        : getTitle(phase)}
-                </Text>
-
-                <Text
-                    style={{
-                        textAlign: "center",
-
                         color: colors.mutedText,
-
                         lineHeight: 21,
                         fontSize: 14,
-
                         paddingHorizontal: 4,
                     }}
                 >
-                    {getDescription({
-                        phase,
-                        beatsBeforeRecording,
-                    })}
+                    {isPreparingRecording
+                        ? "Mikrofon ve kayıt sistemi hazırlanıyor. Birazdan geri sayım başlayacak."
+                        : getDescription({
+                            phase,
+                            beatsBeforeRecording,
+                            isMetronomeSilent,
+                        })}
                 </Text>
+
             </View>
 
+            <View
+                style={{
+                    flexDirection: "row",
+                    backgroundColor: colors.surface,
+                    borderRadius: 16,
+                    padding: 4,
+                    marginBottom: 14,
+                    borderWidth: 1,
+                    borderColor: colors.softBorder,
+                }}
+            >
+                <Pressable
+                    disabled={
+                        isPreparingRecording ||
+                        isCountIn ||
+                        isRecording
+                    }
+                    onPress={() => onSilentModeChange(false)}
+                    style={({ pressed }) => ({
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+
+                        backgroundColor:
+                            !isMetronomeSilent
+                                ? colors.primarySoft
+                                : "transparent",
+
+                        opacity:
+                            isPreparingRecording ||
+                                isCountIn ||
+                                isRecording
+                                ? 0.5
+                                : pressed
+                                    ? 0.8
+                                    : 1,
+                    })}
+                >
+                    <Ionicons
+                        name="volume-high"
+                        size={17}
+                        color={
+                            !isMetronomeSilent
+                                ? colors.primary
+                                : colors.mutedText
+                        }
+                    />
+
+                    <Text
+                        style={{
+                            color:
+                                !isMetronomeSilent
+                                    ? colors.primary
+                                    : colors.mutedText,
+                            fontSize: 13,
+                            fontWeight: "800",
+                        }}
+                    >
+                        Sesli
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    disabled={
+                        isPreparingRecording ||
+                        isCountIn ||
+                        isRecording
+                    }
+                    onPress={() => onSilentModeChange(true)}
+                    style={({ pressed }) => ({
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+
+                        backgroundColor:
+                            isMetronomeSilent
+                                ? colors.primarySoft
+                                : "transparent",
+
+                        opacity:
+                            isPreparingRecording ||
+                                isCountIn ||
+                                isRecording
+                                ? 0.5
+                                : pressed
+                                    ? 0.8
+                                    : 1,
+                    })}
+                >
+                    <Ionicons
+                        name="volume-mute"
+                        size={17}
+                        color={
+                            isMetronomeSilent
+                                ? colors.primary
+                                : colors.mutedText
+                        }
+                    />
+
+                    <Text
+                        style={{
+                            color:
+                                isMetronomeSilent
+                                    ? colors.primary
+                                    : colors.mutedText,
+                            fontSize: 13,
+                            fontWeight: "800",
+                        }}
+                    >
+                        Sessiz
+                    </Text>
+                </Pressable>
+            </View>
             <View
                 style={{
                     backgroundColor:
@@ -524,16 +645,15 @@ export function MetronomeCard({
 
                             <Text
                                 style={{
-                                    color:
-                                        colors.subtleText,
-
+                                    color: colors.subtleText,
                                     fontSize: 12,
                                     fontWeight: "700",
-
                                     marginTop: 2,
                                 }}
                             >
-                                Sesli hazırlık
+                                {isMetronomeSilent
+                                    ? "Sessiz hazırlık"
+                                    : "Sesli hazırlık"}
                             </Text>
                         </>
                     ) : isRecording ? (
@@ -641,7 +761,7 @@ export function MetronomeCard({
                                 isRecording
                             ) &&
                             currentBeat ===
-                                beatNumber;
+                            beatNumber;
 
                         return (
                             <View
@@ -673,54 +793,51 @@ export function MetronomeCard({
                 onPress={onPrimaryPress}
                 disabled={disabled}
                 style={({ pressed }) => ({
-                    backgroundColor:
-                        buttonBackgroundColor,
-
+                    backgroundColor: buttonBackgroundColor,
                     borderRadius: 18,
-
                     paddingVertical: 16,
-
                     alignItems: "center",
-
                     opacity: disabled
                         ? 0.5
                         : pressed
                             ? 0.85
                             : 1,
-
                     flexDirection: "row",
-
                     justifyContent: "center",
-
                     gap: 8,
                 })}
             >
-                <Ionicons
-                    name={
-                        isCountIn
-                            ? "close"
-                            : isRecording
-                                ? "stop"
-                                : isRecorded
-                                    ? "refresh"
-                                    : "mic"
-                    }
-                    size={19}
-                    color={
-                        colors.primaryForeground
-                    }
-                />
+                {isPreparingRecording ? (
+                    <ActivityIndicator
+                        size="small"
+                        color={colors.primaryForeground}
+                    />
+                ) : (
+                    <Ionicons
+                        name={
+                            isCountIn
+                                ? "close"
+                                : isRecording
+                                    ? "stop"
+                                    : isRecorded
+                                        ? "refresh"
+                                        : "mic"
+                        }
+                        size={19}
+                        color={colors.primaryForeground}
+                    />
+                )}
 
                 <Text
                     style={{
-                        color:
-                            colors.primaryForeground,
-
+                        color: colors.primaryForeground,
                         fontWeight: "900",
                         fontSize: 16,
                     }}
                 >
-                    {getButtonLabel(phase)}
+                    {isPreparingRecording
+                        ? "Kayıt hazırlanıyor..."
+                        : getButtonLabel(phase)}
                 </Text>
             </Pressable>
         </Animated.View>
