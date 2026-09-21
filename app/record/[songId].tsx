@@ -104,6 +104,10 @@ function RecordingScreenContent() {
 
     const [beatPulseKey, setBeatPulseKey] = useState(0);
 
+
+    const recordingFlowIdRef = useRef(0);
+    const mountedRef = useRef(true);
+
     const [submitting, setSubmitting] = useState(false);
     const [submitStep, setSubmitStep] = useState<
         "idle" | "uploading" | "creatingJob"
@@ -887,9 +891,14 @@ function RecordingScreenContent() {
     }
 
     async function prepareIOSSilentRecordingAndStartCountIn() {
+        const flowId = ++recordingFlowIdRef.current;
+
         try {
             console.log(
-                "[RecordingScreen][iOS][Silent] Recorder preparation started"
+                "[RecordingScreen][iOS][Silent] Recorder preparation started",
+                {
+                    flowId,
+                }
             );
 
             setIsPreparingRecording(true);
@@ -913,6 +922,28 @@ function RecordingScreenContent() {
             });
 
             const audioModeFinishedAt = Date.now();
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                console.log(
+                    "[RecordingScreen][iOS][Silent] Preparation abandoned after audio mode switch",
+                    {
+                        flowId,
+                        activeFlowId: recordingFlowIdRef.current,
+                        mounted: mountedRef.current,
+                    }
+                );
+
+                if (mountedRef.current) {
+                    setIsPreparingRecording(false);
+                }
+
+                return;
+            }
+
+
 
             console.log(
                 "[RecordingScreen][iOS][Silent] Recording audio mode ready",
@@ -938,6 +969,44 @@ function RecordingScreenContent() {
             );
 
             await audioRecorder.prepareToRecordAsync();
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                console.log(
+                    "[RecordingScreen][iOS][Silent] Preparation abandoned after recorder prepare",
+                    {
+                        flowId,
+                        activeFlowId: recordingFlowIdRef.current,
+                        mounted: mountedRef.current,
+                    }
+                );
+
+                /*
+                 * Native recorder hazırlanmış olabilir.
+                 * Ekran artık yoksa onu açık bırakmak istemiyoruz.
+                 */
+                try {
+                    const status = audioRecorder.getStatus();
+
+                    if (status.isRecording) {
+                        await audioRecorder.stop();
+                    } else if (status.canRecord) {
+                        audioRecorder.record();
+                        await audioRecorder.stop();
+                    }
+                } catch (cleanupError) {
+                    console.log(
+                        "[RecordingScreen][iOS][Silent] Stale recorder cleanup failed:",
+                        cleanupError
+                    );
+                }
+
+                recorderPreparedRef.current = false;
+
+                return;
+            }
 
             const prepareFinishedAt = Date.now();
 
@@ -967,6 +1036,13 @@ function RecordingScreenContent() {
              *
              * Müzikal zaman bundan sonra başlıyor.
              */
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                return;
+            }
             setCurrentBeat(1);
             setRecordingPhase("countIn");
 
@@ -998,9 +1074,11 @@ function RecordingScreenContent() {
 
             clearMetronomeTimers();
 
-            setIsPreparingRecording(false);
-            setRecordingPhase("idle");
-            setCurrentBeat(1);
+            if (mountedRef.current) {
+                setIsPreparingRecording(false);
+                setRecordingPhase("idle");
+                setCurrentBeat(1);
+            }
 
             try {
                 await setAudioModeAsync({
@@ -1017,12 +1095,14 @@ function RecordingScreenContent() {
                 );
             }
 
-            showAlert({
-                type: "warning",
-                title: "Hata",
-                message:
-                    "Kayıt hazırlığı tamamlanamadı. Lütfen tekrar deneyin.",
-            });
+            if (mountedRef.current) {
+                showAlert({
+                    type: "warning",
+                    title: "Hata",
+                    message:
+                        "Kayıt hazırlığı tamamlanamadı. Lütfen tekrar deneyin.",
+                });
+            }
         }
     }
 
@@ -1296,11 +1376,19 @@ function RecordingScreenContent() {
     }, [router, songId]);
 
     useEffect(() => {
+        mountedRef.current = true;
+
         return () => {
             console.log("[RecordingScreen] Cleanup on unmount");
 
+            mountedRef.current = false;
+
+            // Devam eden async recording preparation artık geçersiz.
+            recordingFlowIdRef.current += 1;
+
             countInActiveRef.current = false;
             lastTickFinishedResolverRef.current = null;
+
             clearMetronomeTimers();
 
             try {
@@ -1567,7 +1655,7 @@ function RecordingScreenContent() {
     const cancelCountIn = async () => {
         try {
             console.log("[RecordingScreen] cancelCountIn pressed");
-
+            recordingFlowIdRef.current += 1;
             countInActiveRef.current = false;
             clearMetronomeTimers();
             lastTickFinishedResolverRef.current = null;

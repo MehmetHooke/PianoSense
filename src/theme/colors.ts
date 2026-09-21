@@ -19,6 +19,8 @@ export const lightColors = {
   primarySoft: "#EEF2FF",
   primaryForeground: "#FFFFFF",
 
+  metronomePulseSoft: "#DDE3FF",
+
   secondary: "#7C3AED",
   secondaryPressed: "#6D28D9",
   secondarySoft: "#F3E8FF",
@@ -112,6 +114,8 @@ export const darkColors = {
   primaryPressed: "#6366F1",
   primarySoft: "#1E1B4B",
   primaryForeground: "#FFFFFF",
+
+  metronomePulseSoft: "#312E81",
 
   secondary: "#A78BFA",
   secondaryPressed: "#8B5CF6",

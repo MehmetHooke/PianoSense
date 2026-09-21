@@ -1,14 +1,15 @@
 import type { AppColors } from "@/src/theme/colors";
 
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Animated,
     Pressable,
+    Animated as RNAnimated,
     Text,
     View
 } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 
 export type RecordingPhase =
     | "idle"
@@ -106,11 +107,52 @@ export function MetronomeCard({
     const isRecording = phase === "recording";
     const isRecorded = phase === "recorded";
 
+    const [toggleWidth, setToggleWidth] = useState(0);
+
+    const toggleProgress = useSharedValue(
+        isMetronomeSilent ? 1 : 0
+    );
+
+    const SPRING = {
+        damping: 28,
+        stiffness: 210,
+        mass: 0.85,
+        overshootClamping: false,
+        restDisplacementThreshold: 0.4,
+        restSpeedThreshold: 0.4,
+    };
+
+    useEffect(() => {
+        toggleProgress.value = withSpring(
+            isMetronomeSilent ? 1 : 0,
+            SPRING
+        );
+    }, [isMetronomeSilent, toggleProgress]);
+
+
+    const togglePillStyle = useAnimatedStyle(() => {
+        const itemWidth =
+            toggleWidth > 0
+                ? (toggleWidth - 8) / 2
+                : 0;
+
+        return {
+            width: itemWidth,
+            transform: [
+                {
+                    translateX:
+                        toggleProgress.value *
+                        itemWidth,
+                },
+            ],
+        };
+    });
+
     /*
      * Dış kart scale efekti.
      */
     const cardScale = useRef(
-        new Animated.Value(1)
+        new RNAnimated.Value(1)
     ).current;
 
     /*
@@ -120,14 +162,14 @@ export function MetronomeCard({
      * Bunun yerine sabit renkli bir overlay'in opacity'sini değiştiriyoruz.
      */
     const outerGlowOpacity = useRef(
-        new Animated.Value(0)
+        new RNAnimated.Value(0)
     ).current;
 
     /*
      * İçteki beat kartının sadece border efekti.
      */
     const innerBorderOpacity = useRef(
-        new Animated.Value(0)
+        new RNAnimated.Value(0)
     ).current;
 
     useEffect(() => {
@@ -159,18 +201,18 @@ export function MetronomeCard({
         outerGlowOpacity.setValue(0);
         innerBorderOpacity.setValue(0);
 
-        Animated.parallel([
+        RNAnimated.parallel([
             /*
              * Dış kart hafif heartbeat yapıyor.
              */
-            Animated.sequence([
-                Animated.timing(cardScale, {
+            RNAnimated.sequence([
+                RNAnimated.timing(cardScale, {
                     toValue: 1.018,
                     duration: 80,
                     useNativeDriver: true,
                 }),
 
-                Animated.timing(cardScale, {
+                RNAnimated.timing(cardScale, {
                     toValue: 1,
                     duration: 180,
                     useNativeDriver: true,
@@ -180,14 +222,14 @@ export function MetronomeCard({
             /*
              * Dış glow.
              */
-            Animated.sequence([
-                Animated.timing(outerGlowOpacity, {
+            RNAnimated.sequence([
+                RNAnimated.timing(outerGlowOpacity, {
                     toValue: 1,
                     duration: 60,
                     useNativeDriver: true,
                 }),
 
-                Animated.timing(outerGlowOpacity, {
+                RNAnimated.timing(outerGlowOpacity, {
                     toValue: 0,
                     duration: 260,
                     useNativeDriver: true,
@@ -197,14 +239,14 @@ export function MetronomeCard({
             /*
              * İç kart border glow.
              */
-            Animated.sequence([
-                Animated.timing(innerBorderOpacity, {
+            RNAnimated.sequence([
+                RNAnimated.timing(innerBorderOpacity, {
                     toValue: 1,
                     duration: 60,
                     useNativeDriver: true,
                 }),
 
-                Animated.timing(innerBorderOpacity, {
+                RNAnimated.timing(innerBorderOpacity, {
                     toValue: 0,
                     duration: 260,
                     useNativeDriver: true,
@@ -244,10 +286,10 @@ export function MetronomeCard({
 
     const beatSoftColor = isRecording
         ? colors.dangerSoft
-        : colors.primarySoft;
+        : colors.metronomePulseSoft;
 
     return (
-        <Animated.View
+        <RNAnimated.View
             style={{
                 backgroundColor: colors.card,
 
@@ -289,7 +331,7 @@ export function MetronomeCard({
              * Sadece opacity native tarafta değişiyor.
              */}
             {isCountIn || isRecording ? (
-                <Animated.View
+                <RNAnimated.View
                     pointerEvents="none"
                     style={{
                         position: "absolute",
@@ -364,6 +406,11 @@ export function MetronomeCard({
             </View>
 
             <View
+                onLayout={(event) => {
+                    setToggleWidth(
+                        event.nativeEvent.layout.width
+                    );
+                }}
                 style={{
                     flexDirection: "row",
                     backgroundColor: colors.surface,
@@ -372,15 +419,40 @@ export function MetronomeCard({
                     marginBottom: 14,
                     borderWidth: 1,
                     borderColor: colors.softBorder,
+                    position: "relative",
+                    overflow: "hidden",
                 }}
             >
+                {toggleWidth > 0 ? (
+                    <Animated.View
+                        pointerEvents="none"
+                        style={[
+                            {
+                                position: "absolute",
+                                left: 4,
+                                top: 4,
+                                bottom: 4,
+                                borderRadius: 12,
+
+                                backgroundColor: colors.primarySoft,
+
+                                borderWidth: 1.5,
+                                borderColor: colors.tabPillBorder,
+                            },
+                            togglePillStyle,
+                        ]}
+                    />
+                ) : null}
+
                 <Pressable
                     disabled={
                         isPreparingRecording ||
                         isCountIn ||
                         isRecording
                     }
-                    onPress={() => onSilentModeChange(false)}
+                    onPress={() =>
+                        onSilentModeChange(false)
+                    }
                     style={({ pressed }) => ({
                         flex: 1,
                         flexDirection: "row",
@@ -389,11 +461,6 @@ export function MetronomeCard({
                         gap: 6,
                         paddingVertical: 10,
                         borderRadius: 12,
-
-                        backgroundColor:
-                            !isMetronomeSilent
-                                ? colors.primarySoft
-                                : "transparent",
 
                         opacity:
                             isPreparingRecording ||
@@ -435,7 +502,9 @@ export function MetronomeCard({
                         isCountIn ||
                         isRecording
                     }
-                    onPress={() => onSilentModeChange(true)}
+                    onPress={() =>
+                        onSilentModeChange(true)
+                    }
                     style={({ pressed }) => ({
                         flex: 1,
                         flexDirection: "row",
@@ -444,11 +513,6 @@ export function MetronomeCard({
                         gap: 6,
                         paddingVertical: 10,
                         borderRadius: 12,
-
-                        backgroundColor:
-                            isMetronomeSilent
-                                ? colors.primarySoft
-                                : "transparent",
 
                         opacity:
                             isPreparingRecording ||
@@ -605,7 +669,7 @@ export function MetronomeCard({
                     }}
                 >
                     {isCountIn || isRecording ? (
-                        <Animated.View
+                        <RNAnimated.View
                             pointerEvents="none"
                             style={{
                                 position: "absolute",
@@ -840,6 +904,6 @@ export function MetronomeCard({
                         : getButtonLabel(phase)}
                 </Text>
             </Pressable>
-        </Animated.View>
+        </RNAnimated.View>
     );
 }
