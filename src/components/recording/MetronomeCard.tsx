@@ -173,26 +173,40 @@ export function MetronomeCard({
     ).current;
 
     useEffect(() => {
+        if (isCountIn || isRecording) {
+            return;
+        }
+
+        cardScale.stopAnimation();
+        outerGlowOpacity.stopAnimation();
+        innerBorderOpacity.stopAnimation();
+
+        cardScale.setValue(1);
+        outerGlowOpacity.setValue(0);
+        innerBorderOpacity.setValue(0);
+    }, [
+        isCountIn,
+        isRecording,
+        cardScale,
+        outerGlowOpacity,
+        innerBorderOpacity,
+    ]);
+
+    useEffect(() => {
         /*
-         * Count-in veya recording değilsek
-         * bütün animasyonları normal hale getir.
+         * Animasyon SADECE gerçek beat sinyali geldiğinde çalışacak.
          */
         if (!isCountIn && !isRecording) {
-            cardScale.stopAnimation();
-            outerGlowOpacity.stopAnimation();
-            innerBorderOpacity.stopAnimation();
-
-            cardScale.setValue(1);
-            outerGlowOpacity.setValue(0);
-            innerBorderOpacity.setValue(0);
-
             return;
         }
 
         /*
-         * Yeni beat geldiğinde eski animasyonu kes
-         * ve sıfırdan başlat.
+         * İlk render'daki beatPulseKey = 0 animasyon üretmesin.
          */
+        if (beatPulseKey === 0) {
+            return;
+        }
+
         cardScale.stopAnimation();
         outerGlowOpacity.stopAnimation();
         innerBorderOpacity.stopAnimation();
@@ -202,9 +216,6 @@ export function MetronomeCard({
         innerBorderOpacity.setValue(0);
 
         RNAnimated.parallel([
-            /*
-             * Dış kart hafif heartbeat yapıyor.
-             */
             RNAnimated.sequence([
                 RNAnimated.timing(cardScale, {
                     toValue: 1.018,
@@ -219,9 +230,6 @@ export function MetronomeCard({
                 }),
             ]),
 
-            /*
-             * Dış glow.
-             */
             RNAnimated.sequence([
                 RNAnimated.timing(outerGlowOpacity, {
                     toValue: 1,
@@ -236,9 +244,6 @@ export function MetronomeCard({
                 }),
             ]),
 
-            /*
-             * İç kart border glow.
-             */
             RNAnimated.sequence([
                 RNAnimated.timing(innerBorderOpacity, {
                     toValue: 1,
@@ -255,8 +260,6 @@ export function MetronomeCard({
         ]).start();
     }, [
         beatPulseKey,
-        isCountIn,
-        isRecording,
         cardScale,
         outerGlowOpacity,
         innerBorderOpacity,

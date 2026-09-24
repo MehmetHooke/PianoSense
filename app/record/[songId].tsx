@@ -46,6 +46,12 @@ const iosCountInSource = require(
 
 const COUNT_IN_STOP_GUARD_MS = 80;
 
+const IOS_COUNT_IN_PRIME_TARGET_SEC = 0.35;
+const IOS_COUNT_IN_PRIME_TIMEOUT_MS = 1500;
+
+const IOS_COUNT_IN_START_THRESHOLD_SEC = 0.03;
+const IOS_COUNT_IN_START_TIMEOUT_MS = 700;
+
 export default function RecordingScreen() {
     return (
         <AuthGate>
@@ -136,6 +142,193 @@ function RecordingScreenContent() {
     const iosCountInStatus =
         useAudioPlayerStatus(iosCountInPlayer);
 
+
+    function waitMs(ms: number) {
+        return new Promise<void>((resolve) => {
+            setTimeout(resolve, ms);
+        });
+    }
+
+    async function waitForIOSCountInPlayerProgress(
+        targetTimeSec: number,
+        timeoutMs: number,
+        flowId: number
+    ) {
+        const startedAt = Date.now();
+
+        while (Date.now() - startedAt < timeoutMs) {
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                return false;
+            }
+
+            const currentTime =
+                iosCountInPlayer.currentTime;
+
+            if (currentTime >= targetTimeSec) {
+                return true;
+            }
+
+            await waitMs(25);
+        }
+
+        return false;
+    }
+
+    async function primeIOSCountInPlayer(
+        flowId: number
+    ) {
+        const playbackRate = bpm / 60;
+
+        console.log(
+            "[RecordingScreen][iOS][CountInTrack] Prime started",
+            {
+                flowId,
+                playbackRate,
+            }
+        );
+
+        /*
+         * Player ilk denemede iOS audio session geçişinden
+         * sonra başlamazsa en fazla 2 kez deniyoruz.
+         *
+         * Prime boyunca ses kapalı.
+         */
+        for (let attempt = 1; attempt <= 2; attempt += 1) {
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                return false;
+            }
+
+            /*
+             * Her attempt temiz başlangıç yapsın.
+             */
+            iosCountInPlayer.pause();
+
+            await iosCountInPlayer.seekTo(0);
+
+            iosCountInPlayer.volume = 0;
+
+            iosCountInPlayer.setPlaybackRate(
+                playbackRate
+            );
+
+            /*
+             * Native audio session / seek kısa süre stabilize olsun.
+             */
+            await waitMs(40);
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                iosCountInPlayer.volume = 1;
+
+                return false;
+            }
+
+            const playCalledAt = Date.now();
+
+            iosCountInPlayer.play();
+
+            const progressed =
+                await waitForIOSCountInPlayerProgress(
+                    IOS_COUNT_IN_PRIME_TARGET_SEC,
+                    IOS_COUNT_IN_PRIME_TIMEOUT_MS,
+                    flowId
+                );
+
+            const reachedTime =
+                iosCountInPlayer.currentTime;
+
+            console.log(
+                "[RecordingScreen][iOS][CountInTrack] Prime attempt result",
+                {
+                    attempt,
+                    progressed,
+                    reachedTime,
+                    playCalledAt,
+                    elapsedMs:
+                        Date.now() - playCalledAt,
+                }
+            );
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                iosCountInPlayer.pause();
+
+                iosCountInPlayer.volume = 1;
+
+                return false;
+            }
+
+            /*
+             * KRİTİK:
+             *
+             * Player gerçekten ilerliyorsa ARTIK PAUSE ETMİYORUZ.
+             *
+             * Native playback engine çalışır durumda kalacak.
+             * Volume hâlâ 0 olduğu için kullanıcı prime sesini duymuyor.
+             *
+             * startIOSAudibleCountIn() çalışan player'ı seekTo(0)
+             * yapıp volume=1 ile gerçek count-in'e çevirecek.
+             */
+            if (progressed) {
+                console.log(
+                    "[RecordingScreen][iOS][CountInTrack] Prime completed with player still running",
+                    {
+                        attempt,
+                        currentTime:
+                            iosCountInPlayer.currentTime,
+                        playbackRate,
+                    }
+                );
+
+                return true;
+            }
+
+            /*
+             * Sadece başarısız attempt'te player'ı resetliyoruz.
+             */
+            iosCountInPlayer.pause();
+
+            await iosCountInPlayer.seekTo(0);
+
+            console.log(
+                "[RecordingScreen][iOS][CountInTrack] Prime attempt failed, retrying",
+                {
+                    attempt,
+                    currentTime:
+                        iosCountInPlayer.currentTime,
+                }
+            );
+
+            await waitMs(80);
+        }
+
+        /*
+         * İki deneme de başarısız.
+         */
+        try {
+            iosCountInPlayer.pause();
+
+            await iosCountInPlayer.seekTo(0);
+
+            iosCountInPlayer.volume = 1;
+        } catch { }
+
+        console.log(
+            "[RecordingScreen][iOS][CountInTrack] Prime failed after retries"
+        );
+
+        return false;
+    }
 
     function triggerVisualBeat() {
         setBeatPulseKey((previous) => previous + 1);
@@ -867,19 +1060,141 @@ function RecordingScreenContent() {
                 );
             }, remainingMs);
     }
-    function startIOSAudibleCountIn() {
+    async function startIOSAudibleCountIn(
+        flowId: number
+    ) {
         try {
             const playbackRate = bpm / 60;
+
+            iosCountInPlayer.pause();
+
+            await iosCountInPlayer.seekTo(0);
+
+            iosCountInPlayer.volume = 1;
 
             iosCountInPlayer.setPlaybackRate(
                 playbackRate
             );
 
-            const countInStartedAt = Date.now();
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current ||
+                !countInActiveRef.current
+            ) {
+                return;
+            }
 
-            countInActiveRef.current = true;
+            /*
+             * GERÇEK count-in playback'i.
+             *
+             * Artık Date.now()'ı play()'den önce
+             * müzikal başlangıç kabul etmiyoruz.
+             */
+            const playRequestedAt = Date.now();
 
+            iosCountInPlayer.play();
+
+            const playbackStarted =
+                await waitForIOSCountInPlayerProgress(
+                    IOS_COUNT_IN_START_THRESHOLD_SEC,
+                    IOS_COUNT_IN_START_TIMEOUT_MS,
+                    flowId
+                );
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current ||
+                !countInActiveRef.current
+            ) {
+                return;
+            }
+
+            if (!playbackStarted) {
+                /*
+                 * Prime başarılı olsa bile gerçek play()
+                 * başlamadıysa bir kez yeniden başlat.
+                 */
+                console.log(
+                    "[RecordingScreen][iOS][CountInTrack] Real playback did not start, retrying",
+                    {
+                        currentTime:
+                            iosCountInPlayer.currentTime,
+                    }
+                );
+
+                iosCountInPlayer.pause();
+
+                await iosCountInPlayer.seekTo(0);
+
+                await waitMs(60);
+
+                iosCountInPlayer.play();
+
+                const retryStarted =
+                    await waitForIOSCountInPlayerProgress(
+                        IOS_COUNT_IN_START_THRESHOLD_SEC,
+                        IOS_COUNT_IN_START_TIMEOUT_MS,
+                        flowId
+                    );
+
+                if (!retryStarted) {
+                    throw new Error(
+                        "iOS count-in player failed to start"
+                    );
+                }
+            }
+
+            if (
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current ||
+                !countInActiveRef.current
+            ) {
+                return;
+            }
+
+            /*
+             * Player'ın gerçekten ne kadar ilerlediğini
+             * kullanarak gerçek başlangıç anını geriye
+             * doğru hesaplıyoruz.
+             *
+             * Örn:
+             * currentTime = 0.04
+             * rate = 1.25
+             *
+             * yaklaşık 32 ms önce başlamıştır.
+             */
+            const confirmedAt = Date.now();
+
+            const confirmedCurrentTime =
+                iosCountInPlayer.currentTime;
+
+            const elapsedRealMs =
+                (confirmedCurrentTime / playbackRate) *
+                1000;
+
+            const countInStartedAt =
+                confirmedAt - elapsedRealMs;
+
+            console.log(
+                "[RecordingScreen][iOS][CountInTrack] Real playback confirmed",
+                {
+                    flowId,
+                    playRequestedAt,
+                    confirmedAt,
+                    confirmedCurrentTime,
+                    playbackRate,
+                    elapsedRealMs,
+                    countInStartedAt,
+                    startupDelayMs:
+                        confirmedAt - playRequestedAt,
+                }
+            );
+
+            /*
+             * ARTIK müzikal count-in başlıyor.
+             */
             setCurrentBeat(1);
+
             triggerVisualBeat();
 
             console.log(
@@ -896,38 +1211,16 @@ function RecordingScreenContent() {
             );
 
             /*
-             * Tek native play çağrısı.
+             * 2/3 vuruş için mevcut davranışı
+             * ŞİMDİLİK değiştirmiyoruz.
+             *
+             * Onu ikinci adımda düzelteceğiz.
              */
-            iosCountInPlayer.play();
-
-            setTimeout(() => {
-                console.log(
-                    "[RecordingScreen][iOS][CountInTrack] Status +300ms",
-                    {
-                        currentTime: iosCountInPlayer.currentTime,
-                        playing: iosCountInStatus.playing,
-                        didJustFinish: iosCountInStatus.didJustFinish,
-                        playbackState: iosCountInStatus.playbackState,
-                    }
-                );
-            }, 300);
-
-            setTimeout(() => {
-                console.log(
-                    "[RecordingScreen][iOS][CountInTrack] Status +1200ms",
-                    {
-                        currentTime: iosCountInPlayer.currentTime,
-                        playing: iosCountInStatus.playing,
-                        didJustFinish: iosCountInStatus.didJustFinish,
-                        playbackState: iosCountInStatus.playbackState,
-                    }
-                );
-            }, 1200);
-
             if (beatsBeforeRecording < 4) {
                 const stopTrackAt =
                     countInStartedAt +
-                    beatsBeforeRecording * beatDurationMs -
+                    beatsBeforeRecording *
+                    beatDurationMs -
                     COUNT_IN_STOP_GUARD_MS;
 
                 const stopDelayMs = Math.max(
@@ -971,11 +1264,17 @@ function RecordingScreenContent() {
             setRecordingPhase("idle");
             setCurrentBeat(1);
 
+            try {
+                iosCountInPlayer.pause();
+
+                await iosCountInPlayer.seekTo(0);
+            } catch { }
+
             showAlert({
                 type: "warning",
                 title: "Hata",
                 message:
-                    "Metronom başlatılamadı.",
+                    "Metronom başlatılamadı. Lütfen tekrar deneyin.",
             });
         }
     }
@@ -1107,18 +1406,29 @@ function RecordingScreenContent() {
             recorderPreparedRef.current = true;
 
             /*
-             * Count-in player müzikal başlangıçtan ÖNCE
-             * tamamen hazır olsun.
+             * iOS audio session + recorder prepare sonrasında
+             * count-in player'ı sessiz şekilde gerçekten
+             * çalıştırıp native playback engine'i prime ediyoruz.
              */
-            iosCountInPlayer.pause();
+            const playerPrimed =
+                await primeIOSCountInPlayer(flowId);
 
-            await iosCountInPlayer.seekTo(0);
+            if (
+                !playerPrimed ||
+                !mountedRef.current ||
+                flowId !== recordingFlowIdRef.current
+            ) {
+                if (
+                    mountedRef.current &&
+                    flowId === recordingFlowIdRef.current
+                ) {
+                    throw new Error(
+                        "iOS count-in player could not be primed"
+                    );
+                }
 
-            iosCountInPlayer.volume = 1;
-
-            iosCountInPlayer.setPlaybackRate(
-                bpm / 60
-            );
+                return;
+            }
 
             console.log(
                 "[RecordingScreen][iOS][Audible] Recorder and count-in track prepared",
@@ -1145,7 +1455,6 @@ function RecordingScreenContent() {
                 }
             );
 
-            setCurrentBeat(1);
             setRecordingPhase("countIn");
 
             countInActiveRef.current = true;
@@ -1156,7 +1465,7 @@ function RecordingScreenContent() {
                 "[RecordingScreen][iOS][Audible] Starting single-track count-in"
             );
 
-            startIOSAudibleCountIn();
+            await startIOSAudibleCountIn(flowId);
 
         } catch (error) {
             console.log(
