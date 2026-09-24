@@ -2,6 +2,7 @@ import { CloudTasksClient } from "@google-cloud/tasks";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { setGlobalOptions } from "firebase-functions/v2";
+import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 admin.initializeApp();
@@ -677,3 +678,193 @@ export const deleteMyAccount = onCall(async (request) => {
     );
   }
 });
+
+type ExpoPushMessage = {
+  to: string;
+  sound: "default";
+  title: string;
+  body: string;
+  data: {
+    type: "analysis-completed";
+    jobId: string;
+  };
+  channelId?: string;
+};
+
+function isExpoPushToken(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return (
+    value.startsWith("ExponentPushToken[") || value.startsWith("ExpoPushToken[")
+  );
+}
+
+async function sendExpoPushNotifications(messages: ExpoPushMessage[]) {
+  if (messages.length === 0) {
+    return;
+  }
+
+  const response = await fetch("https://exp.host/--/api/v2/push/send", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(messages),
+  });
+
+  const responseBody = await response.text();
+
+  console.log("[PushNotification] Expo response", {
+    status: response.status,
+    body: responseBody,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Expo push request failed: ${response.status} ${responseBody}`,
+    );
+  }
+}
+
+export const notifyAnalysisCompleted = onDocumentUpdated(
+  {
+    document: "analysisJobs/{jobId}",
+    region: "europe-west1",
+  },
+  async (event) => {
+    const beforeSnapshot = event.data?.before;
+    const afterSnapshot = event.data?.after;
+
+    if (!beforeSnapshot || !afterSnapshot) {
+      return;
+    }
+
+    const before = beforeSnapshot.data();
+    const after = afterSnapshot.data();
+
+    /*
+     * Sadece status başka bir değerden
+     * completed'a geçtiğinde çalış.
+     *
+     * completed dokümanında başka alanlar sonradan
+     * güncellenirse ikinci kez notification göndermiyoruz.
+     */
+    if (before.status === "completed" || after.status !== "completed") {
+      return;
+    }
+
+    const jobId = event.params.jobId;
+
+    const userId = typeof after.userId === "string" ? after.userId : null;
+
+    if (!userId) {
+      console.log("[PushNotification] Completed analysis has no userId", {
+        jobId,
+      });
+
+      return;
+    }
+
+    const songTitle =
+      typeof after.songTitle === "string" && after.songTitle.trim().length > 0
+        ? after.songTitle.trim()
+        : "Piyano egzersizi";
+
+    console.log("[PushNotification] Analysis completion detected", {
+      jobId,
+      userId,
+      songTitle,
+      beforeStatus: before.status,
+      afterStatus: after.status,
+    });
+
+    const db = admin.firestore();
+
+    /*
+     * Client tarafında:
+     *
+     * users/{userId}/pushTokens/{tokenId}
+     *
+     * şeklinde kaydetmiştik.
+     */
+    const tokensSnapshot = await db
+      .collection("users")
+      .doc(userId)
+      .collection("pushTokens")
+      .get();
+
+    if (tokensSnapshot.empty) {
+      console.log("[PushNotification] User has no registered push token", {
+        jobId,
+        userId,
+      });
+
+      return;
+    }
+
+    const tokens = tokensSnapshot.docs
+      .map((document) => document.data().token)
+      .filter(isExpoPushToken);
+
+    if (tokens.length === 0) {
+      console.log("[PushNotification] No valid Expo push tokens", {
+        jobId,
+        userId,
+      });
+
+      return;
+    }
+
+    const messages: ExpoPushMessage[] = tokens.map((token) => ({
+      to: token,
+      sound: "default",
+
+      title: "Analizin hazır 🎹",
+
+      body:
+        `${songTitle} için analiz tamamlandı. ` +
+        "Sonuçlarını görmek için dokun.",
+
+      data: {
+        type: "analysis-completed",
+        jobId,
+      },
+
+      channelId: "analysis-results",
+    }));
+
+    try {
+      await sendExpoPushNotifications(messages);
+
+      /*
+       * Debugging ve tekrar gönderim kontrolü için
+       * job'a bilgi bırakıyoruz.
+       */
+      await afterSnapshot.ref.update({
+        notificationSentAt: FieldValue.serverTimestamp(),
+        notificationTokenCount: tokens.length,
+      });
+
+      console.log("[PushNotification] Analysis notification sent", {
+        jobId,
+        userId,
+        tokenCount: tokens.length,
+      });
+    } catch (error) {
+      console.error("[PushNotification] Sending failed", {
+        jobId,
+        userId,
+        error,
+      });
+
+      /*
+       * Throw ediyoruz ki Functions bunu başarısız
+       * execution olarak görebilsin.
+       */
+      throw error;
+    }
+  },
+);
