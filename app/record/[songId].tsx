@@ -40,11 +40,18 @@ import {
 } from "react-native";
 
 const metronomeTickSource = require("@/src/assets/sound/metronom-tick.wav");
-const iosCountInSource = require(
-    "@/src/assets/sound/countin-60bpm-4beats.wav"
+
+const iosCountIn2BeatSource = require(
+    "@/src/assets/sound/countin-60bpm-2beats.wav"
 );
 
-const COUNT_IN_STOP_GUARD_MS = 80;
+const iosCountIn3BeatSource = require(
+    "@/src/assets/sound/countin-60bpm-3beats.wav"
+);
+
+const iosCountIn4BeatSource = require(
+    "@/src/assets/sound/countin-60bpm-4beats.wav"
+);
 
 const IOS_COUNT_IN_PRIME_TARGET_SEC = 0.35;
 const IOS_COUNT_IN_PRIME_TIMEOUT_MS = 1500;
@@ -128,11 +135,29 @@ function RecordingScreenContent() {
     const originalPlayer = useAudioPlayer(originalSource);
     const originalStatus = useAudioPlayerStatus(originalPlayer);
 
+
     const tickPlayer = useAudioPlayer(
         metronomeTickSource,
         { downloadFirst: true }
     );
     const tickWarmedUpRef = useRef(false);
+
+    const bpm = song?.bpm ?? 80;
+    const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
+    const beatsBeforeRecording = song?.beatsBeforeRecording ?? beatsPerMeasure;
+    const beatDurationMs = 60000 / bpm;
+
+    const iosCountInSource = useMemo(() => {
+        if (beatsBeforeRecording === 2) {
+            return iosCountIn2BeatSource;
+        }
+
+        if (beatsBeforeRecording === 3) {
+            return iosCountIn3BeatSource;
+        }
+
+        return iosCountIn4BeatSource;
+    }, [beatsBeforeRecording]);
 
     const iosCountInPlayer = useAudioPlayer(
         iosCountInSource,
@@ -374,10 +399,7 @@ function RecordingScreenContent() {
 
     const tickStatus = useAudioPlayerStatus(tickPlayer);
 
-    const bpm = song?.bpm ?? 80;
-    const beatsPerMeasure = song?.beatsPerMeasure ?? 4;
-    const beatsBeforeRecording = song?.beatsBeforeRecording ?? beatsPerMeasure;
-    const beatDurationMs = 60000 / bpm;
+
 
     const liveDurationMillis = recorderState.durationMillis ?? 0;
     const durationMillis =
@@ -1209,45 +1231,7 @@ function RecordingScreenContent() {
                         iosCountInPlayer.currentTime,
                 }
             );
-
-            /*
-             * 2/3 vuruş için mevcut davranışı
-             * ŞİMDİLİK değiştirmiyoruz.
-             *
-             * Onu ikinci adımda düzelteceğiz.
-             */
-            if (beatsBeforeRecording < 4) {
-                const stopTrackAt =
-                    countInStartedAt +
-                    beatsBeforeRecording *
-                    beatDurationMs -
-                    COUNT_IN_STOP_GUARD_MS;
-
-                const stopDelayMs = Math.max(
-                    0,
-                    stopTrackAt - Date.now()
-                );
-
-                setTimeout(() => {
-                    if (!countInActiveRef.current) {
-                        return;
-                    }
-
-                    try {
-                        iosCountInPlayer.pause();
-
-                        console.log(
-                            "[RecordingScreen][iOS][CountInTrack] Track stopped before unused tick",
-                            {
-                                beatsBeforeRecording,
-                                stopTrackAt,
-                                actualAt: Date.now(),
-                            }
-                        );
-                    } catch { }
-                }, stopDelayMs);
-            }
-
+        
             scheduleIOSAudibleCountInBeat(
                 2,
                 countInStartedAt
