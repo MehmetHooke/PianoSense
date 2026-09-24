@@ -9,6 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+google-services.json
+
+pianosense-64bc1-firebase-adminsdk-fbsvc-86f1b4e659.json
 # Native
 .kotlin/
 *.orig.*

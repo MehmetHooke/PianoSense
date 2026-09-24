@@ -17,6 +17,7 @@
     },
 
     "android": {
+      "googleServicesFile": "./google-services.json",
       "package": "com.piyanomlabasbasa.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
