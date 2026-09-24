@@ -8,8 +8,8 @@ import { useAppAlert } from "@/src/hooks/useAppAlert";
 import { getActiveSongs } from "@/src/services/songService";
 import { useAppTheme } from "@/src/theme/useTheme";
 import type { Song } from "@/src/types/song";
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, RefreshControl, View } from "react-native";
 
 type PracticeSongItem = {
@@ -148,11 +148,9 @@ export default function PracticeScreen() {
     [showAlert]
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      loadSongs();
-    }, [loadSongs])
-  );
+  useEffect(() => {
+    loadSongs();
+  }, [loadSongs]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

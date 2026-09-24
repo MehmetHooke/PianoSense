@@ -338,7 +338,7 @@ function ProcessingScreenContent() {
         type="error"
         title="Analiz başarısız oldu"
         description={failedMessage}
-        actionLabel="Geri dön"
+        actionLabel="Geri dön ve Tekrar Dene!"
         onActionPress={goBack}
       />
     );
