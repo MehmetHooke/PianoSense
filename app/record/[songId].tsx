@@ -362,37 +362,80 @@ function RecordingScreenContent() {
     async function warmUpTickPlayerForAndroid() {
         if (isIOS) return;
         if (tickWarmedUpRef.current) return;
-        if (!tickStatus.isLoaded) return;
+
+        if (!tickStatus.isLoaded) {
+            console.log(
+                "[RecordingScreen][Android] Tick warm-up skipped because player is not loaded yet"
+            );
+
+            return;
+        }
 
         try {
-            console.log("[RecordingScreen][Android] Tick warm-up started");
+            console.log(
+                "[RecordingScreen][Android] Tick warm-up started"
+            );
 
             const originalVolume = tickPlayer.volume;
 
             tickPlayer.volume = 0;
 
             await tickPlayer.seekTo(0);
+
             tickPlayer.play();
 
-            await new Promise<void>((resolve) => {
-                setTimeout(resolve, 100);
-            });
+            const warmupStartedAt = Date.now();
+
+            let progressed = false;
+
+            while (Date.now() - warmupStartedAt < 800) {
+                const currentTime = tickPlayer.currentTime;
+
+                if (currentTime > 0.02) {
+                    progressed = true;
+                    break;
+                }
+
+                await new Promise<void>((resolve) => {
+                    setTimeout(resolve, 25);
+                });
+            }
+
+            console.log(
+                "[RecordingScreen][Android] Tick warm-up progress check",
+                {
+                    progressed,
+                    currentTime: tickPlayer.currentTime,
+                    elapsedMs:
+                        Date.now() - warmupStartedAt,
+                }
+            );
 
             tickPlayer.pause();
+
             await tickPlayer.seekTo(0);
 
             tickPlayer.volume = originalVolume;
 
+            if (!progressed) {
+                console.log(
+                    "[RecordingScreen][Android] Tick warm-up did not progress"
+                );
+
+                return;
+            }
+
             tickWarmedUpRef.current = true;
 
-            console.log("[RecordingScreen][Android] Tick warm-up completed");
+            console.log(
+                "[RecordingScreen][Android] Tick warm-up completed"
+            );
         } catch (error) {
             console.log(
                 "[RecordingScreen][Android] Tick warm-up error:",
                 error
             );
 
-            // Volume yanlışlıkla 0'da kalmasın.
             tickPlayer.volume = 1;
         }
     }
@@ -1231,7 +1274,7 @@ function RecordingScreenContent() {
                         iosCountInPlayer.currentTime,
                 }
             );
-        
+
             scheduleIOSAudibleCountInBeat(
                 2,
                 countInStartedAt
@@ -2131,6 +2174,26 @@ function RecordingScreenContent() {
 
             recorderPreparedRef.current = false;
 
+            if (!isMetronomeSilent) {
+                await warmUpTickPlayerForAndroid();
+
+                console.log(
+                    "[RecordingScreen][Android] Tick warm-up state before count-in",
+                    {
+                        warmedUp: tickWarmedUpRef.current,
+                        currentTime: tickPlayer.currentTime,
+                        isLoaded: tickStatus.isLoaded,
+                    }
+                );
+
+                /*
+                 * Native pause/seek reset'i otursun.
+                 */
+                await new Promise<void>((resolve) => {
+                    setTimeout(resolve, 50);
+                });
+            }
+
             console.log(
                 "[RecordingScreen][Android] Count-in started in playback mode",
                 {
@@ -2138,6 +2201,7 @@ function RecordingScreenContent() {
                     beatsBeforeRecording,
                     beatDurationMs,
                     silentMode: isMetronomeSilent,
+                    tickWarmedUp: tickWarmedUpRef.current,
                 }
             );
 
