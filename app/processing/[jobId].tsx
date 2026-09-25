@@ -17,7 +17,6 @@ import { View } from "react-native";
 
 
 import { useAppAlert } from "@/src/hooks/useAppAlert";
-import { usePreventRemove } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -59,7 +58,6 @@ function ProcessingScreenContent() {
 
   const [completionSoundFinished, setCompletionSoundFinished] =
     useState(false);
-  const isUploadInProgress = job?.status === "uploading";
 
   const completePlayer = useAudioPlayer(processingCompleteSound);
 
@@ -92,6 +90,17 @@ function ProcessingScreenContent() {
   }
 
   function goBack() {
+    if (job?.status === "uploading") {
+      showAlert({
+        type: "warning",
+        title: "Kayıt hâlâ yükleniyor",
+        message:
+          "Ses kaydın henüz tamamen yüklenmedi. Bu aşamada ekrandan çıkarsan yükleme tamamlanmayabilir ve analiz kaybolabilir. Lütfen yükleme tamamlanana kadar bekle.",
+      });
+
+      return;
+    }
+
     if (router.canGoBack()) {
       router.back();
       return;
@@ -100,26 +109,6 @@ function ProcessingScreenContent() {
     goHome();
   }
 
-  // ---------------------------------------------------------
-  // Prevent leaving while recording upload is still active
-  // ---------------------------------------------------------
-
-  usePreventRemove(isUploadInProgress, () => {
-    console.log(
-      "[ProcessingScreen] Navigation blocked because upload is still in progress",
-      {
-        jobId,
-        status: job?.status,
-      },
-    );
-
-    showAlert({
-      type: "warning",
-      title: "Kayıt hâlâ yükleniyor",
-      message:
-        "Ses kaydın henüz tamamen yüklenmedi. Bu aşamada ekrandan çıkarsan yükleme tamamlanmayabilir ve analiz kaybolabilir. Lütfen yükleme tamamlanana kadar bekle.",
-    });
-  });
   // ---------------------------------------------------------
   // Minimum processing screen duration
   // ---------------------------------------------------------
