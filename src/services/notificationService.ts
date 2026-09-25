@@ -6,12 +6,19 @@ import { Platform } from "react-native";
 import { db } from "./firebase";
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    console.log("[Notifications] Foreground notification received", {
+      identifier: notification.request.identifier,
+      data: notification.request.content.data,
+    });
+
+    return {
+      shouldShowBanner: false,
+      shouldShowList: false,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 export async function registerPushNotificationsForUser(userId: string) {
@@ -24,9 +31,6 @@ export async function registerPushNotificationsForUser(userId: string) {
       return null;
     }
 
-    /*
-     * Android'de token istemeden önce channel oluşturmak gerekiyor.
-     */
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("analysis-results", {
         name: "Analiz Sonuçları",
@@ -71,12 +75,6 @@ export async function registerPushNotificationsForUser(userId: string) {
       expoPushToken,
     });
 
-    /*
-     * Token'ın kendisini document ID yapmak yerine
-     * cihaz bazlı sabit bir id kullanabiliriz.
-     *
-     * Şimdilik encoded token ile basit ve güvenli tutuyoruz.
-     */
     const tokenId = encodeURIComponent(expoPushToken);
 
     await setDoc(
