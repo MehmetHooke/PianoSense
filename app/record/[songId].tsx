@@ -2449,7 +2449,7 @@ function RecordingScreenContent() {
 
             await audioRecorder.stop();
 
-            if (isIOS && nativeDurationMillis < 1000) {
+            if (nativeDurationMillis < 1000) {
                 recorderPreparedRef.current = false;
 
                 if (isIOS) {
@@ -2474,7 +2474,7 @@ function RecordingScreenContent() {
                     });
                 } catch (error) {
                     console.log(
-                        "[RecordingScreen][iOS] Failed to restore playback mode after invalid recording:",
+                        `[RecordingScreen][${Platform.OS}] Failed to restore playback mode after invalid recording:`,
                         error
                     );
                 }
@@ -2488,7 +2488,7 @@ function RecordingScreenContent() {
                     type: "error",
                     title: "Kayıt alınamadı",
                     message:
-                        "Ses kaydı düzgün oluşturulamadı. Lütfen tekrar deneyin.",
+                        "Ses kaydı çok kısa veya düzgün oluşturulamadı. Lütfen tekrar deneyin.",
                 });
 
                 return;
