@@ -93,7 +93,6 @@ export default function ProfileScreen() {
         setStudentClassesLoading(false);
       },
       (error) => {
-        console.log("STUDENT CLASSES LISTEN ERROR:", error);
         setStudentClassesError("Sınıf bilgileri yüklenemedi.");
         setStudentClassesLoading(false);
       },
@@ -112,7 +111,6 @@ export default function ProfileScreen() {
       user.uid,
       setProfile,
       (error) => {
-        console.log("USER PROFILE LISTEN ERROR:", error);
       },
     );
 
@@ -156,7 +154,6 @@ export default function ProfileScreen() {
 
       setProfilePickerVisible(false);
     } catch (error) {
-      console.log("UPDATE PROFILE IMAGE ERROR:", error);
 
       showAlert({
         type: "error",
@@ -174,7 +171,6 @@ export default function ProfileScreen() {
       await signOut(auth);
       router.replace("/auth/login");
     } catch (error) {
-      console.log("Logout error:", error);
 
       showAlert({
         type: "error",
@@ -200,10 +196,7 @@ export default function ProfileScreen() {
 
       router.replace("/auth/login");
     } catch (error: any) {
-      console.log("DELETE ACCOUNT ERROR RAW:", error);
-      console.log("DELETE ACCOUNT ERROR CODE:", error?.code);
-      console.log("DELETE ACCOUNT ERROR MESSAGE:", error?.message);
-      console.log("DELETE ACCOUNT ERROR DETAILS:", error?.details);
+
 
       showAlert({
         type: "error",
@@ -245,7 +238,6 @@ export default function ProfileScreen() {
         message: "Sınıf bağlantın başarıyla oluşturuldu.",
       });
     } catch (error: any) {
-      console.log("JOIN CLASS ERROR:", error);
       setClassJoinError(error?.message ?? "Sınıfa katılma işlemi başarısız oldu.");
     } finally {
       setJoiningClass(false);

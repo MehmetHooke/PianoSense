@@ -37,7 +37,6 @@ export default function TeacherStudentsScreen() {
             user.uid,
             setStudents,
             (error) => {
-                console.log("FOLLOWED STUDENTS LISTEN ERROR:", error);
                 setErrorMessage("Öğrenci listesi yüklenemedi.");
             }
         );
@@ -66,7 +65,6 @@ export default function TeacherStudentsScreen() {
 
             setStudentCode("");
         } catch (error: any) {
-            console.log("FOLLOW STUDENT ERROR:", error);
             setErrorMessage(error?.message ?? "Öğrenci takibe alınamadı.");
         } finally {
             setIsSubmitting(false);

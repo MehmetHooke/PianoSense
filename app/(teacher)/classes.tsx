@@ -45,7 +45,6 @@ export default function TeacherClassesScreen() {
       user.uid,
       setClasses,
       (error) => {
-        console.log("TEACHER CLASSES LISTEN ERROR:", error);
         setErrorMessage("Sınıflar yüklenemedi.");
       },
     );
@@ -74,7 +73,6 @@ export default function TeacherClassesScreen() {
 
       setClassName("");
     } catch (error: any) {
-      console.log("CREATE CLASS ERROR:", error);
       setErrorMessage(error?.message ?? "Sınıf oluşturulamadı.");
     } finally {
       setIsCreating(false);
@@ -126,7 +124,6 @@ export default function TeacherClassesScreen() {
         message: `"${classItem.name}" artık sınıflar listende görünmeyecek.`,
       });
     } catch (error: any) {
-      console.log("DELETE CLASS ERROR:", error);
 
       showAlert({
         type: "error",

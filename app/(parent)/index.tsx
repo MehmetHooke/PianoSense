@@ -103,7 +103,6 @@ export default function ParentHomeScreen() {
           setChildrenLoading(false);
         },
         (error) => {
-          console.log("PARENT CHILDREN LISTEN ERROR:", error);
           setChildren([]);
           setChildrenLoading(false);
         },
@@ -132,7 +131,6 @@ export default function ParentHomeScreen() {
         setJobsLoading(false);
       },
       (error) => {
-        console.log("PARENT HOME ANALYSIS LISTEN ERROR:", error);
         setJobs([]);
         setJobsLoading(false);
       },

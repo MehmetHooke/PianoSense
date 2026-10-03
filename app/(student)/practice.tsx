@@ -133,8 +133,6 @@ export default function PracticeScreen() {
         const activeSongs = await getActiveSongs();
         setSongs(activeSongs);
       } catch (error) {
-        console.log("Load songs error:", error);
-
         showAlert({
           type: "error",
           title: "Egzersizler yüklenemedi",

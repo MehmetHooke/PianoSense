@@ -82,7 +82,6 @@ export default function ParentProfileScreen() {
     }
 
     const unsubscribe = listenUserProfile(user.uid, setProfile, (error) => {
-      console.log("USER PROFILE LISTEN ERROR:", error);
     });
 
     return unsubscribe;
@@ -120,7 +119,6 @@ export default function ParentProfileScreen() {
 
       setProfilePickerVisible(false);
     } catch (error) {
-      console.log("UPDATE PROFILE IMAGE ERROR:", error);
       showAlert({
         type: "error",
         title: "Profil resmi değiştirilemedi",
@@ -138,7 +136,6 @@ export default function ParentProfileScreen() {
       await signOut(auth);
       router.replace("/auth/login");
     } catch (error) {
-      console.log("Logout error:", error);
 
       showAlert({
         type: "error",
@@ -164,10 +161,6 @@ export default function ParentProfileScreen() {
 
       router.replace("/auth/login");
     } catch (error: any) {
-      console.log("DELETE ACCOUNT ERROR RAW:", error);
-      console.log("DELETE ACCOUNT ERROR CODE:", error?.code);
-      console.log("DELETE ACCOUNT ERROR MESSAGE:", error?.message);
-      console.log("DELETE ACCOUNT ERROR DETAILS:", error?.details);
 
       showAlert({
         type: "error",

@@ -42,7 +42,6 @@ export default function HomeScreen() {
         const completedJobs = await getCompletedAnalysisJobsByUser(user.uid);
         setJobs(completedJobs);
       } catch (error) {
-        console.log("Load home data error:", error);
         setJobs([]);
       } finally {
         setLoading(false);

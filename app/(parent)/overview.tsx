@@ -46,7 +46,6 @@ export default function ParentOverviewScreen() {
         }
       },
       (error) => {
-        console.log("PARENT OVERVIEW CHILDREN LISTEN ERROR:", error);
         setChildren([]);
         setLoading(false);
       },

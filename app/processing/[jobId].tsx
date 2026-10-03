@@ -135,7 +135,6 @@ function ProcessingScreenContent() {
       shouldPlayInBackground: false,
       interruptionMode: "doNotMix",
     }).catch((error) => {
-      console.log("[ProcessingScreen] Audio mode error:", error);
     });
   }, []);
 
@@ -181,9 +180,7 @@ function ProcessingScreenContent() {
           completionStartedRef.current = true;
           completedJobIdRef.current = jobId;
 
-          console.log("[ProcessingScreen] Analysis completed", {
-            jobId,
-          });
+
 
 
 
@@ -200,12 +197,7 @@ function ProcessingScreenContent() {
             completePlayer.seekTo(0);
             completePlayer.play();
 
-            console.log("[ProcessingScreen] Completion sound started");
           } catch (error) {
-            console.log(
-              "[ProcessingScreen] Completion sound start error:",
-              error,
-            );
 
             // Ses herhangi bir nedenle başlayamazsa kullanıcıyı
             // processing ekranında sonsuza kadar tutma.
@@ -266,7 +258,6 @@ function ProcessingScreenContent() {
     completedAnimationTimerRef.current = setTimeout(() => {
       setCompletedAnimationFinished(true);
 
-      console.log("[ProcessingScreen] Completion animation finished");
     }, COMPLETED_ANIMATION_MS);
 
     return () => {
@@ -286,7 +277,6 @@ function ProcessingScreenContent() {
     if (!showCompletedAnimation) return;
     if (!completePlayerStatus.didJustFinish) return;
 
-    console.log("[ProcessingScreen] Completion sound finished");
 
     setCompletionSoundFinished(true);
   }, [completePlayerStatus.didJustFinish, showCompletedAnimation]);
@@ -302,9 +292,7 @@ function ProcessingScreenContent() {
     if (!completedJobIdRef.current) return;
     if (hasNavigatedRef.current) return;
 
-    console.log("[ProcessingScreen] Ready to navigate to result", {
-      jobId: completedJobIdRef.current,
-    });
+
 
     navigateToResult(completedJobIdRef.current);
   }, [

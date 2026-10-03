@@ -35,7 +35,6 @@ export default function Index() {
         setProfileLoading(false);
       },
       (err) => {
-        console.log("USER PROFILE LISTEN ERROR:", err);
         setProfileError("Profil bilgileri yüklenemedi.");
         setProfileLoading(false);
       }
