@@ -56,7 +56,7 @@ const iosCountIn4BeatSource = require(
 const IOS_COUNT_IN_PRIME_TARGET_SEC = 0.35;
 const IOS_COUNT_IN_PRIME_TIMEOUT_MS = 1500;
 
-const IOS_COUNT_IN_START_THRESHOLD_SEC = 0.03;
+const IOS_COUNT_IN_START_THRESHOLD_SEC = 0.005;
 const IOS_COUNT_IN_START_TIMEOUT_MS = 700;
 
 export default function RecordingScreen() {
@@ -85,12 +85,14 @@ function RecordingScreenContent() {
     const countInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const visualMetronomeTimerRef =
         useRef<ReturnType<typeof setInterval> | null>(null);
+
     const countInActiveRef = useRef(false);
 
     const visualBeatDelayTimerRef =
         useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastAudibleTickAtRef = useRef<number | null>(null);
     const lastTickFinishedResolverRef = useRef<(() => void) | null>(null);
+
 
     const [song, setSong] = useState<Song | null>(null);
     const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -196,7 +198,7 @@ function RecordingScreenContent() {
                 return true;
             }
 
-            await waitMs(25);
+            await waitMs(5);
         }
 
         return false;
@@ -1089,14 +1091,32 @@ function RecordingScreenContent() {
             countInStartedAt +
             (beat - 1) * beatDurationMs;
 
+        const VISUAL_WAKE_EARLY_MS = 40;
+
         const remainingMs = Math.max(
             0,
             beatTargetAt - Date.now()
         );
 
+        const wakeDelayMs = Math.max(
+            0,
+            remainingMs - VISUAL_WAKE_EARLY_MS
+        );
+
         countInTimerRef.current =
-            setTimeout(() => {
+            setTimeout(async () => {
                 countInTimerRef.current = null;
+
+                if (!countInActiveRef.current) {
+                    return;
+                }
+
+                while (
+                    countInActiveRef.current &&
+                    Date.now() < beatTargetAt
+                ) {
+                    await waitMs(5);
+                }
 
                 if (!countInActiveRef.current) {
                     return;
@@ -1111,8 +1131,7 @@ function RecordingScreenContent() {
                         beatTargetAt,
                         actualAt,
                         timingDifferenceMs:
-                            actualAt -
-                            beatTargetAt,
+                            actualAt - beatTargetAt,
                     }
                 );
 
@@ -1123,7 +1142,7 @@ function RecordingScreenContent() {
                     beat + 1,
                     countInStartedAt
                 );
-            }, remainingMs);
+            }, wakeDelayMs);
     }
     async function startIOSAudibleCountIn(
         flowId: number
@@ -1158,6 +1177,18 @@ function RecordingScreenContent() {
             const playRequestedAt = Date.now();
 
             iosCountInPlayer.play();
+
+            const firstVisualRequestedAt = Date.now();
+
+            console.log(
+                "[RecordingScreen][iOS][VisualTiming] First visual candidate",
+                {
+                    firstVisualRequestedAt,
+                    playRequestedAt,
+                    differenceFromPlayRequestMs:
+                        firstVisualRequestedAt - playRequestedAt,
+                }
+            );
 
             const playbackStarted =
                 await waitForIOSCountInPlayerProgress(
@@ -1255,9 +1286,24 @@ function RecordingScreenContent() {
                 }
             );
 
-            /*
-             * ARTIK müzikal count-in başlıyor.
-             */
+            const firstVisualTriggerAt = Date.now();
+
+            console.log(
+                "[RecordingScreen][iOS][VisualTiming] Beat 1 visual trigger",
+                {
+                    estimatedAudioBeatAt: countInStartedAt,
+                    visualTriggerAt: firstVisualTriggerAt,
+                    visualDelayFromAudioMs:
+                        firstVisualTriggerAt - countInStartedAt,
+
+                    playerCurrentTimeSec:
+                        iosCountInPlayer.currentTime,
+
+                    playerCurrentRealElapsedMs:
+                        (iosCountInPlayer.currentTime / playbackRate) * 1000,
+                }
+            );
+
             setCurrentBeat(1);
 
             triggerVisualBeat();

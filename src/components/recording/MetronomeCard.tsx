@@ -215,48 +215,32 @@ export function MetronomeCard({
         outerGlowOpacity.setValue(0);
         innerBorderOpacity.setValue(0);
 
+        /*
+ * Beat geldiği anda pulse direkt maksimum durumda başlasın.
+ * Böylece 60-80 ms'lik "yükselme" gecikmesi ortadan kalkar.
+ */
+        cardScale.setValue(1.018);
+        outerGlowOpacity.setValue(1);
+        innerBorderOpacity.setValue(1);
+
         RNAnimated.parallel([
-            RNAnimated.sequence([
-                RNAnimated.timing(cardScale, {
-                    toValue: 1.018,
-                    duration: 80,
-                    useNativeDriver: true,
-                }),
+            RNAnimated.timing(cardScale, {
+                toValue: 1,
+                duration: 180,
+                useNativeDriver: true,
+            }),
 
-                RNAnimated.timing(cardScale, {
-                    toValue: 1,
-                    duration: 180,
-                    useNativeDriver: true,
-                }),
-            ]),
+            RNAnimated.timing(outerGlowOpacity, {
+                toValue: 0,
+                duration: 260,
+                useNativeDriver: true,
+            }),
 
-            RNAnimated.sequence([
-                RNAnimated.timing(outerGlowOpacity, {
-                    toValue: 1,
-                    duration: 60,
-                    useNativeDriver: true,
-                }),
-
-                RNAnimated.timing(outerGlowOpacity, {
-                    toValue: 0,
-                    duration: 260,
-                    useNativeDriver: true,
-                }),
-            ]),
-
-            RNAnimated.sequence([
-                RNAnimated.timing(innerBorderOpacity, {
-                    toValue: 1,
-                    duration: 60,
-                    useNativeDriver: true,
-                }),
-
-                RNAnimated.timing(innerBorderOpacity, {
-                    toValue: 0,
-                    duration: 260,
-                    useNativeDriver: true,
-                }),
-            ]),
+            RNAnimated.timing(innerBorderOpacity, {
+                toValue: 0,
+                duration: 260,
+                useNativeDriver: true,
+            }),
         ]).start();
     }, [
         beatPulseKey,
