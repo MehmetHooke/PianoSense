@@ -1,11 +1,14 @@
-import appJson from "./app.json";
+import type { ConfigContext, ExpoConfig } from "expo/config";
 
-export default {
-  ...appJson.expo,
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+
+  name: config.name ?? "Piyanomla Baş Başa",
+  slug: config.slug ?? "pianosense",
 
   android: {
-    ...appJson.expo.android,
+    ...config.android,
     googleServicesFile:
       process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json",
   },
-};
+});
